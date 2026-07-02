@@ -39,6 +39,11 @@ wandb/
 # --- Built dashboard (regenerate with flab-dashboard) ---
 /site/
 
+# --- Playwright MCP scratch + stray screenshots ---
+.playwright-mcp/
+/*.png
+reliability.png
+
 # --- OS / editor ---
 .DS_Store
 Thumbs.db
