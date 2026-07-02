@@ -122,6 +122,34 @@ class DivergencePipeline(Pipeline):
         }
 
     # ---- process --------------------------------------------------------
+    def _live_odds(self, raw: dict[str, list[dict]]) -> dict:
+        """Most-prominent live markets from each venue, with their YES odds — the
+        'here are the current high-value predictions' view the dashboard leads with.
+        Polymarket arrives ordered by volume; Kalshi binary events by prominence."""
+        poly = []
+        for m in raw.get("polymarket", []):
+            price = poly_yes_price(m)
+            q = m.get("question", "")
+            if price is None or not q:
+                continue
+            poly.append({"event": q, "yes": round(float(price), 3),
+                         "volume": round(to_float(m.get("volumeNum")) or 0.0, 0)})
+            if len(poly) >= 10:
+                break
+        kalshi = []
+        for e in raw.get("kalshi", []):
+            markets = e.get("markets") or []
+            if len(markets) != 1:
+                continue
+            price = kalshi_yes_price(markets[0])
+            title = e.get("title", "")
+            if price is None or not title:
+                continue
+            kalshi.append({"event": title, "yes": round(float(price), 3)})
+            if len(kalshi) >= 10:
+                break
+        return {"poly": poly, "kalshi": kalshi}
+
     def process(self, raw: dict[str, list[dict]]) -> str:
         # Binary (single-market) events only: the event title is the question,
         # and its lone market's YES quote is the price.
@@ -140,10 +168,25 @@ class DivergencePipeline(Pipeline):
         ).dropna()
 
         sections: dict[str, str] = {}
+        self._data = {"edges": [], "n_kalshi": int(len(k)), "n_poly": int(len(p)),
+                      "live": self._live_odds(raw)}
         if k.empty or p.empty:
             sections["Flagged markets (net of fees)"] = "_one or both venues returned no priced markets_"
         else:
             matched = match_markets(k, p, threshold=self.match_threshold)
+            # Always surface the closest-matched pairs (with both venues' odds) so
+            # the dashboard shows real prices even on days nothing clears the fee hurdle.
+            self._data["matched"] = [
+                {
+                    "event": str(r["event"]),
+                    "kalshi": round(float(r["kalshi_yes"]), 3),
+                    "poly": round(float(r["poly_yes"]), 3),
+                    "gap": round(abs(float(r["kalshi_yes"]) - float(r["poly_yes"])), 3),
+                    "poly_event": str(r["poly_event"]),
+                    "similarity": round(float(r["similarity"]), 2),
+                }
+                for _, r in matched.sort_values("similarity", ascending=False).head(10).iterrows()
+            ]
             flags = find_divergences(matched, threshold=self.edge_threshold)
             if flags.empty:
                 body = "_no after-fee divergences cleared the threshold_"
@@ -155,13 +198,24 @@ class DivergencePipeline(Pipeline):
                     "| event | kalshi_yes | poly_yes | net_edge | direction | matched poly title | sim |",
                     "| --- | --- | --- | --- | --- | --- | --- |",
                 ]
+                edges = []
                 for _, r in flags.iterrows():
                     lines.append(
                         f"| {r['event']} | {r['kalshi_yes']:.3f} | {r['poly_yes']:.3f} "
                         f"| {r['net_edge']:.3f} | {r['direction']} | {r['poly_event']} "
                         f"| {r['similarity']:.2f} |"
                     )
+                    edges.append({
+                        "event": str(r["event"]),
+                        "kalshi": round(float(r["kalshi_yes"]), 3),
+                        "poly": round(float(r["poly_yes"]), 3),
+                        "net_edge": round(float(r["net_edge"]), 3),
+                        "direction": str(r["direction"]),
+                        "poly_event": str(r["poly_event"]),
+                        "similarity": round(float(r["similarity"]), 2),
+                    })
                 body = "\n".join(lines)
+                self._data["edges"] = edges
             sections["Flagged markets (net of fees)"] = body
             sections["Coverage"] = (
                 f"{len(k)} Kalshi binary events and {len(p)} Polymarket priced markets "

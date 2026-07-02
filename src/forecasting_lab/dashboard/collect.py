@@ -30,6 +30,8 @@ class LabState:
     sources: dict = field(default_factory=dict)
     forecast_log: dict = field(default_factory=dict)
     digests: dict = field(default_factory=dict)  # slug -> {path, tables, headlines}
+    movers: dict = field(default_factory=dict)  # structured trending stocks (sparklines + scores)
+    market_edges: dict = field(default_factory=dict)  # structured cross-venue odds pairs
 
 
 def _fit_tennis(seed: int = 0) -> dict:
@@ -211,6 +213,10 @@ def collect_lab_state(seed: int = 0) -> LabState:
         "research-digest": _latest_digest("research-digest"),
         "media-watch": _latest_digest("media-watch"),
     }
+    from ..pipeline.digest import read_latest_data
+
+    state.movers = read_latest_data("trending-stocks") or {"empty": True}
+    state.market_edges = read_latest_data("market-divergence") or {"empty": True}
     return state
 
 

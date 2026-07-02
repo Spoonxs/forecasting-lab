@@ -11,7 +11,7 @@ from datetime import date as _date
 from pathlib import Path
 from typing import Any
 
-from .digest import write_dated_note
+from .digest import write_dated_data, write_dated_note
 
 
 class Pipeline(ABC):
@@ -19,6 +19,10 @@ class Pipeline(ABC):
 
     #: filename slug for the dated digest, e.g. "market-divergence".
     slug: str = "digest"
+
+    #: optional machine-readable payload a subclass sets during ``process`` — when
+    #: present, ``store`` also writes ``inputs/<date>-<slug>.json`` for the dashboard.
+    _data: dict | None = None
 
     @abstractmethod
     def fetch(self) -> Any:
@@ -29,7 +33,10 @@ class Pipeline(ABC):
         """Turn raw data into the Markdown body of a digest."""
 
     def store(self, body: str, on: _date | None = None, out_dir: Path | None = None) -> Path:
-        return write_dated_note(self.slug, body, on=on, out_dir=out_dir)
+        path = write_dated_note(self.slug, body, on=on, out_dir=out_dir)
+        if self._data is not None:
+            write_dated_data(self.slug, self._data, on=on, out_dir=out_dir)
+        return path
 
     def run(self, on: _date | None = None, out_dir: Path | None = None) -> Path:
         raw = self.fetch()

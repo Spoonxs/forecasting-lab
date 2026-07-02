@@ -179,7 +179,7 @@ class TrendingStocksPipeline(Pipeline):
         return out
 
     def process(self, raw: dict) -> str:
-        rows, headlines_by_ticker = [], {}
+        rows, headlines_by_ticker, sparks = [], {}, {}
         reddit_ok = bool(self._social.get("_reddit_reachable"))
         for symbol, blob in raw.items():
             feats = compute_features(blob["history"], len(blob["headlines"]))
@@ -187,9 +187,11 @@ class TrendingStocksPipeline(Pipeline):
                 continue
             feats["social_mentions"] = float(self._social.get(symbol, 0))
             headlines_by_ticker[symbol] = blob["headlines"][:3]
+            sparks[symbol] = _thin_closes(blob["history"])
             rows.append({"ticker": symbol, **feats})
 
         if not rows:
+            self._data = {"movers": [], "reddit_ok": reddit_ok}
             return render_digest(
                 "Trending Stocks Digest",
                 {"Status": "_no trending tickers had enough history to score_"},
@@ -199,6 +201,8 @@ class TrendingStocksPipeline(Pipeline):
         frame = pd.DataFrame(rows)
         fast = composite_score(frame, FAST_MONEY_WEIGHTS, out_col="fast_money")
         trend = composite_score(frame, MOMENTUM_TREND_WEIGHTS, out_col="momentum")
+
+        self._data = _movers_payload(fast, trend, sparks, headlines_by_ticker, reddit_ok)
 
         sections = {
             "Fast-money candidates (GME shape)": _rank_table(
@@ -241,3 +245,46 @@ def _headline_block(tickers, headlines_by_ticker: dict) -> str:
         for title in headlines_by_ticker.get(symbol, []):
             parts.append(f"- **{symbol}**: {title}")
     return "\n".join(parts) if parts else "_no recent headlines_"
+
+
+def _thin_closes(history: pd.DataFrame, points: int = 48) -> list[float]:
+    """Last ~``points`` closes, rounded, for a dashboard sparkline."""
+    if history.empty or "close" not in history:
+        return []
+    closes = history["close"].to_numpy(dtype=float)
+    if len(closes) > points:
+        idx = np.linspace(0, len(closes) - 1, points).round().astype(int)
+        closes = closes[idx]
+    return [round(float(c), 4) for c in closes]
+
+
+def _movers_payload(fast, trend, sparks, headlines, reddit_ok) -> dict:
+    """Structured mover cards for the dashboard: last price, moves, scores, spark."""
+    fm = dict(zip(fast["ticker"], fast["fast_money"], strict=False))
+    mo = dict(zip(trend["ticker"], trend["momentum"], strict=False))
+
+    def card(row) -> dict:
+        t = row["ticker"]
+        spark = sparks.get(t, [])
+        heads = headlines.get(t, [])
+        return {
+            "ticker": t,
+            "last": spark[-1] if spark else None,
+            "ret_5d": round(float(row["ret_5d"]), 4),
+            "ret_20d": round(float(row["ret_20d"]), 4),
+            "ret_60d": round(float(row["ret_60d"]), 4),
+            "pct_from_high": round(float(row["pct_from_high"]), 4),
+            "volume_spike": round(float(row["volume_spike"]), 2),
+            "fast_money": round(float(fm.get(t, 0.0)), 3),
+            "momentum": round(float(mo.get(t, 0.0)), 3),
+            "spark": spark,
+            "headline": heads[0] if heads else "",
+        }
+
+    momentum_cards = [card(r) for _, r in trend.iterrows()]
+    fast_cards = [card(r) for _, r in fast.iterrows()]
+    return {
+        "movers": momentum_cards,   # momentum-ranked (NVIDIA shape) — the default view
+        "fast": fast_cards,         # fast-money-ranked (GME shape)
+        "reddit_ok": reddit_ok,
+    }

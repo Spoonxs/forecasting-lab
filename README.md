@@ -3,7 +3,7 @@
 ![CI](https://github.com/Spoonxs/forecasting-lab/actions/workflows/ci.yml/badge.svg)
 ![daily-lab](https://github.com/Spoonxs/forecasting-lab/actions/workflows/daily.yml/badge.svg)
 ![python](https://img.shields.io/badge/python-3.10%2B-blue)
-![tests](https://img.shields.io/badge/tests-159-brightgreen)
+![tests](https://img.shields.io/badge/tests-170-brightgreen)
 ![license](https://img.shields.io/badge/license-MIT-informational)
 
 A research platform for forecasting real-world events using **prediction markets**,
@@ -31,10 +31,10 @@ for the map and the non-negotiable guardrails.
 | Forward study | `forecasting_lab.forwardtest` | Records real-basket picks each run, marks them to market on the next — a live out-of-sample study (`flab-forward`) |
 | Automation | `flab-run-all` + `flab-cron` + `.github/workflows/daily.yml` | One failure-tolerant orchestrator; a local daily OS task, **or** a cloud GitHub Actions cron that runs the pipelines and publishes the dashboard to Pages |
 | Markets | `forecasting_lab.markets` | Polymarket + Kalshi clients (string-price fix, RSA-PSS signing, pagination), title matching + live cross-venue divergence monitor |
-| ML | `forecasting_lab.ml` | Cross-sectional features/labels, **purged walk-forward CV**, GBM ranker |
+| ML | `forecasting_lab.ml` | Cross-sectional features/labels, **purged walk-forward CV**, GBM ranker + **hyperparameter tuning by out-of-sample rank IC**; runs live in the arena as `ml_ranker` |
 | Backtest | `forecasting_lab.backtest` | Exact Kalshi/Polymarket cost models, walk-forward backtester vs honest baselines |
 | Signals | `forecasting_lab.signals` | Squeeze + momentum composites, plus the **live trending-stocks scanner** (Yahoo trending/charts + Google News) for NVIDIA/GME shapes |
-| Arena | `forecasting_lab.sim` | Persistent paper-trading race: strategies vs honest baselines, turnover costs, resumable state |
+| Arena | `forecasting_lab.sim` | Persistent paper-trading race: four rules + a self-tuning ML learner vs honest baselines, turnover costs, resumable state |
 | Dashboard | `forecasting_lab.dashboard` | Single-file, self-explaining dashboard (hand-rolled SVG, plain-English sections) of the whole lab |
 | Track record | `forecasting_lab.calibration_log` | A public, Brier-scored forecasting log — the credibility artifact |
 | Pipeline | `forecasting_lab.pipeline` | invoke→fetch→process→store; files dated digests into `inputs/` |
@@ -43,7 +43,7 @@ for the map and the non-negotiable guardrails.
 
 ```bash
 pip install -e ".[all]"      # core is light (numpy/pandas); ml/markets/viz are extras
-pytest                       # 159 tests, a few seconds, no network needed
+pytest                       # 170 tests, a few seconds, no network needed
 ```
 
 Run the headline demo — fit a **time-forward** tennis Elo on synthetic data and
@@ -84,6 +84,7 @@ flab-watch                                  # ~100 key voices (YouTube+news) -> 
 flab-alert --setup                           # how to add a free Discord webhook (1 min)
 flab-alert --test                            # send a test ping to Discord/Telegram/local
 flab-run-all                                 # run EVERY pipeline, rebuild dashboard, send alert
+flab-intraday                               # fast refresh: movers + live odds + macro -> dashboard
 flab-cron install --time 07:30              # schedule flab-run-all daily (real OS task, $0)
 ```
 
@@ -110,7 +111,7 @@ forecasting-lab/
 ├── CLAUDE.md                  operating doc: guardrails, repo map, conventions
 ├── *.md                       the briefs (domain knowledge, plan, learning path)
 ├── src/forecasting_lab/       the package (eval, sports, markets, ml, backtest, signals, ...)
-├── tests/                     158 property-based tests
+├── tests/                     170 property-based tests
 ├── inputs/                    dated research digests land here (gitignored)
 ├── pyproject.toml             packaging + extras + console scripts
 └── requirements.txt
