@@ -34,8 +34,8 @@ reliability diagram. See `tests/test_elo.py::test_fit_beats_base_rate_and_is_cal
 
 ## Repo map
 Code — `src/forecasting_lab/`:
-- `eval/` — Brier, log loss, reliability table, ECE, Murphy decomposition, calibration plot. The credibility core; pure-numpy, always runs.
-- `sports/` — tennis Elo (surface-aware, 538 K), NBA Elo (`basketball`: home edge + margin-of-victory), soccer Elo (`soccer`: Davidson 3-outcome draw model, ranked probability score); synthetic generators; vectorised Monte Carlo brackets.
+- `eval/` — Brier, log loss, reliability, ECE, Murphy decomposition, calibration plot; `deflated` = probabilistic/deflated Sharpe + PBO (CSCV) for multiple-testing & overfitting honesty. The credibility core.
+- `sports/` — tennis Elo (surface, 538 K), NBA Elo (`basketball`: home edge + MOV), soccer Elo (`soccer`: Davidson 3-outcome draw model, RPS, **real loader** via football-data.co.uk); synthetic generators; Monte Carlo brackets.
 - `markets/` — Polymarket + Kalshi clients (JSON-string / dollars-cents payload quirks, pagination), title `matching`, live cross-venue `monitor.DivergencePipeline` (`flab-divergence --live`).
 - `ml/` — cross-sectional features, forward-return / triple-barrier labels, **purged walk-forward CV**, GBM ranker (LightGBM → sklearn → ridge fallback).
 - `macro/` — FRED yield-curve recession nowcast (Estrella-Mishkin probit, `flab-macro`), calibration-tested.
@@ -44,10 +44,10 @@ Code — `src/forecasting_lab/`:
 - `signals/` — squeeze and momentum composites (ranked *separately*); `trending` = the live NVIDIA/GME-shape scanner (Yahoo trending + charts + Google News, `flab-trending`).
 - `sim/` — the strategy arena: persistent bar-based paper-trading race (strategies carry a plain-language `description`; turnover costs; resume-safe fingerprint; `flab-sim`). Daily bars, not an order-book sim — honestly labeled.
 - `forwardtest/` — the **forward study**: records each strategy's real-basket picks per run and marks the prior snapshot to market on the next (genuinely out-of-sample; backfill seeds, live marks accrue; `flab-forward`). The "watch strategies play out over time" artifact.
-- `media/` — media watch: channel/voice `watchlist`, YouTube RSS + optional transcripts (`youtube`), name→ticker + theme `entities`, buzz digest (`watch`, `flab-watch`). Cloud-ready, degrades locally.
+- `media/` — media watch: ~100-voice `watchlist`, YouTube RSS/yt-dlp (`youtube`), name→ticker + theme `entities`, finance-lexicon `sentiment` (tone), buzz digest (`watch`, `flab-watch`). Cloud-ready, degrades locally.
 - `dashboard/` — `flab-dashboard` renders `site/index.html`: single-file amber-terminal dashboard, hand-rolled SVG, GSAP via CDN as *progressive enhancement* (no-js/reduced-motion/print all reveal content; `.reveal` hidden only under live JS).
 - `alerts/` — free phone alerts (`flab-alert`): Telegram bot / Discord webhook (both free) with a zero-config `inputs/alerts.log` fallback; composes a daily summary from the latest digests. Last job in `flab-run-all`.
-- `calibration_log/` — the public, Brier-scored forecasting log. The portfolio piece.
+- `calibration_log/` — the public, Brier-scored forecasting log; **auto-resolves** from Kalshi/Polymarket settlement (`resolve`) and scores you **against the market** (beat-the-closing-line). The portfolio piece.
 - `pipeline/` — the invoke→fetch→process→store pattern; `research.py` = live arXiv q-fin sweep (`flab-research`, explainable keyword ranking); files dated digests into `inputs/`.
 - `cli/` — `flab-elo` (`--sport nba|soccer`), `flab-signals`, `flab-divergence`, `flab-calibration`, `flab-trending`, `flab-sim`, `flab-forward`, `flab-watch`, `flab-macro`, `flab-research`, `flab-sources`, `flab-alert`, `flab-dashboard`; `flab-run-all` (orchestrator) + `flab-cron`. Free hosting: local task, GitHub Actions (→ Pages), or Oracle Always Free — no subscription.
 
@@ -63,7 +63,7 @@ Briefs (domain knowledge, pulled on demand — not all read every session):
 ## Quickstart
 ```bash
 pip install -e ".[all]"        # or a subset: pip install -e ".[ml,markets,viz]"
-pytest                         # 143 tests, a few seconds, no network
+pytest                         # 158 tests, a few seconds, no network
 python -m forecasting_lab.cli.elo_backtest --synthetic   # headline calibration demo
 ```
 - Real tennis data: `flab-elo --years 2021 2022 2023 --tour atp` (downloads Sackmann CSVs to `data/`, cached). Data is CC BY-NC-SA — research/non-commercial only.

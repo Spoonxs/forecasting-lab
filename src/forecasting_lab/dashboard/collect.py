@@ -141,6 +141,7 @@ def _arena_state() -> dict:
         "total_bars": len(arena.prices),
         "leaderboard": board.to_dict("records"),
         "curves": {c: [round(v, 5) for v in thinned[c].tolist()] for c in thinned.columns},
+        "pbo": arena.overfitting_pbo(),
     }
 
 
@@ -158,7 +159,12 @@ def _forecast_log() -> dict:
             "pending": int(len(log.to_frame())),
             "command": "flab-calibration resolve --id N --outcome 0|1",
         }
-    return {"empty": False, "score": log.score(), "n_total": int(len(log.to_frame()))}
+    return {
+        "empty": False,
+        "score": log.score(),
+        "n_total": int(len(log.to_frame())),
+        "beat": log.beat_market_score(),
+    }
 
 
 def _latest_digest(slug: str) -> dict:

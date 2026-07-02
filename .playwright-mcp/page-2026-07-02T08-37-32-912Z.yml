@@ -1,0 +1,186 @@
+- generic [ref=f7e2]:
+  - generic [ref=f7e3]:
+    - link "Skip to content" [ref=f7e4] [cursor=pointer]:
+      - /url: "#start-of-content"
+    - banner [ref=f7e6]:
+      - heading "Navigation Menu" [level=2] [ref=f7e7]
+      - generic [ref=f7e9]:
+        - button "Toggle navigation" [ref=f7e11] [cursor=pointer]
+        - link "Homepage" [ref=f7e17] [cursor=pointer]:
+          - /url: /
+          - img [ref=f7e18]
+        - generic [ref=f7e20]:
+          - link "Sign in" [ref=f7e21] [cursor=pointer]:
+            - /url: /login?return_to=https%3A%2F%2Fgithub.com%2FSpoonxs%2Fforecasting-lab%2Factions%2Fworkflows%2Fdaily.yml
+          - button "Appearance settings" [ref=f7e24] [cursor=pointer]:
+            - img
+  - main [ref=f7e28]:
+    - generic [ref=f7e29]:
+      - generic [ref=f7e30]:
+        - generic [ref=f7e32]:
+          - img [ref=f7e33]
+          - link "Spoonxs" [ref=f7e36] [cursor=pointer]:
+            - /url: /Spoonxs
+          - generic [ref=f7e37]: /
+          - strong [ref=f7e38]:
+            - link "forecasting-lab" [ref=f7e39] [cursor=pointer]:
+              - /url: /Spoonxs/forecasting-lab
+          - generic [ref=f7e40]: Public
+        - generic [ref=f7e41]:
+          - list:
+            - listitem [ref=f7e42]:
+              - link "You must be signed in to change notification settings" [ref=f7e43] [cursor=pointer]:
+                - /url: /login?return_to=%2FSpoonxs%2Fforecasting-lab
+                - img [ref=f7e44]
+                - text: Notifications
+            - listitem [ref=f7e46]:
+              - link "Fork 0" [ref=f7e47] [cursor=pointer]:
+                - /url: /login?return_to=%2FSpoonxs%2Fforecasting-lab
+                - img [ref=f7e48]
+                - text: Fork
+                - generic "0" [ref=f7e50]
+            - listitem [ref=f7e51]:
+              - link "You must be signed in to star a repository" [ref=f7e53] [cursor=pointer]:
+                - /url: /login?return_to=%2FSpoonxs%2Fforecasting-lab
+                - img [ref=f7e54]
+                - text: Star
+                - generic "0 users starred this repository" [ref=f7e56]: "0"
+      - navigation "Repository" [ref=f7e57]:
+        - list [ref=f7e58]:
+          - listitem [ref=f7e59]:
+            - link "Code" [ref=f7e60] [cursor=pointer]:
+              - /url: /Spoonxs/forecasting-lab
+              - img [ref=f7e61]
+              - generic [ref=f7e63]: Code
+          - listitem [ref=f7e64]:
+            - link "Issues" [ref=f7e65] [cursor=pointer]:
+              - /url: /Spoonxs/forecasting-lab/issues
+              - img [ref=f7e66]
+              - generic [ref=f7e69]: Issues
+          - listitem [ref=f7e70]:
+            - link "Pull requests" [ref=f7e71] [cursor=pointer]:
+              - /url: /Spoonxs/forecasting-lab/pulls
+              - img [ref=f7e72]
+              - generic [ref=f7e74]: Pull requests
+          - listitem [ref=f7e75]:
+            - link "Actions" [ref=f7e76] [cursor=pointer]:
+              - /url: /Spoonxs/forecasting-lab/actions
+              - img [ref=f7e77]
+              - generic [ref=f7e79]: Actions
+          - listitem [ref=f7e80]:
+            - link "Projects" [ref=f7e81] [cursor=pointer]:
+              - /url: /Spoonxs/forecasting-lab/projects
+              - img [ref=f7e82]
+              - generic [ref=f7e84]: Projects
+          - listitem [ref=f7e85]:
+            - link "Security and quality" [ref=f7e86] [cursor=pointer]:
+              - /url: /Spoonxs/forecasting-lab/security
+              - img [ref=f7e87]
+              - generic [ref=f7e89]: Security and quality
+          - listitem [ref=f7e90]:
+            - link "Insights" [ref=f7e91] [cursor=pointer]:
+              - /url: /Spoonxs/forecasting-lab/pulse
+              - img [ref=f7e92]
+              - generic [ref=f7e94]: Insights
+    - generic [ref=f7e96]:
+      - 'heading "Actions: Spoonxs/forecasting-lab" [level=1] [ref=f7e97]'
+      - generic [ref=f7e100]:
+        - generic [ref=f7e101]:
+          - heading "Actions" [level=2] [ref=f7e103]
+          - navigation "Actions Workflows" [ref=f7e107]:
+            - list [ref=f7e109]:
+              - listitem [ref=f7e110]:
+                - link "All workflows" [ref=f7e111] [cursor=pointer]:
+                  - /url: /Spoonxs/forecasting-lab/actions
+                  - generic [ref=f7e112]: All workflows
+              - listitem [ref=f7e113]
+              - listitem [ref=f7e114]:
+                - list "Workflows" [ref=f7e118]:
+                  - listitem [ref=f7e119]:
+                    - link "CI" [ref=f7e120] [cursor=pointer]:
+                      - /url: /Spoonxs/forecasting-lab/actions/workflows/ci.yml
+                      - generic [ref=f7e121]: CI
+                  - listitem [ref=f7e122]:
+                    - link "daily-lab" [ref=f7e123] [cursor=pointer]:
+                      - /url: /Spoonxs/forecasting-lab/actions/workflows/daily.yml
+                      - generic [ref=f7e124]: daily-lab
+                  - listitem [ref=f7e125]:
+                    - link "Dependency Graph" [ref=f7e126] [cursor=pointer]:
+                      - /url: /Spoonxs/forecasting-lab/actions/workflows/dependabot/update-graph
+                      - generic [ref=f7e127]: Dependency Graph
+              - listitem [ref=f7e128]
+              - listitem [ref=f7e129]:
+                - generic [ref=f7e132]:
+                  - heading "Management" [level=3] [ref=f7e134]
+                  - list "Management" [ref=f7e135]:
+                    - listitem [ref=f7e136]:
+                      - link "Caches" [ref=f7e137] [cursor=pointer]:
+                        - /url: /Spoonxs/forecasting-lab/actions/caches
+                        - generic:
+                          - img
+                        - generic [ref=f7e138]: Caches
+                    - listitem [ref=f7e139]:
+                      - link "Deployments" [ref=f7e140] [cursor=pointer]:
+                        - /url: /Spoonxs/forecasting-lab/deployments
+                        - generic:
+                          - img
+                        - generic [ref=f7e141]: Deployments
+                        - generic:
+                          - img
+        - generic [ref=f7e144]:
+          - generic [ref=f7e145]:
+            - generic [ref=f7e146]:
+              - heading "daily-lab" [level=2] [ref=f7e148]:
+                - generic [ref=f7e150]: daily-lab
+              - generic [ref=f7e151]:
+                - search [ref=f7e154]:
+                  - combobox "Filter workflow runs" [ref=f7e155]
+                  - img
+                - button "Show workflow options" [ref=f7e158] [cursor=pointer]:
+                  - img
+            - link "daily.yml" [ref=f7e160] [cursor=pointer]:
+              - /url: /Spoonxs/forecasting-lab/blob/master/.github/workflows/daily.yml
+          - strong [ref=f7e163]: 1 workflow run
+          - generic [ref=f7e164]:
+            - generic [ref=f7e166]:
+              - button "Event" [ref=f7e170] [cursor=pointer]:
+                - generic [ref=f7e172]: Event
+                - generic:
+                  - img
+              - button "Status" [ref=f7e176] [cursor=pointer]:
+                - generic [ref=f7e178]: Status
+                - generic:
+                  - img
+              - button "Branch" [ref=f7e182] [cursor=pointer]:
+                - generic [ref=f7e184]: Branch
+                - generic:
+                  - img
+              - button "Actor" [ref=f7e188] [cursor=pointer]:
+                - generic [ref=f7e190]: Actor
+                - generic:
+                  - img
+            - generic [ref=f7e193]:
+              - generic [ref=f7e194]:
+                - 'link "completed successfully: Run 1 of daily-lab." [ref=f7e195] [cursor=pointer]':
+                  - /url: /Spoonxs/forecasting-lab/actions/runs/28574456215
+                  - img "completed successfully:" [ref=f7e197]
+                  - generic [ref=f7e199]: daily-lab
+                - generic [ref=f7e200]:
+                  - text: "daily-lab #1:"
+                  - generic [ref=f7e201]:
+                    - text: Manually run by
+                    - link "Spoonxs" [ref=f7e202] [cursor=pointer]:
+                      - /url: /Spoonxs
+              - link "master" [ref=f7e204] [cursor=pointer]:
+                - /url: /Spoonxs/forecasting-lab/tree/refs/heads/master
+              - generic [ref=f7e206]:
+                - generic [ref=f7e207]:
+                  - generic [ref=f7e208]:
+                    - img [ref=f7e210]
+                    - generic "Jul 2, 2026, 2:54 AM CDT" [ref=f7e212]: 43 minutes ago
+                  - generic [ref=f7e213]:
+                    - img "Run duration" [ref=f7e214]
+                    - text: 10m 43s
+                - group [ref=f7e217]:
+                  - generic "Show options" [ref=f7e218] [cursor=pointer]:
+                    - img "Show options" [ref=f7e219]

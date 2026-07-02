@@ -5,7 +5,7 @@ original briefs.
 
 **Start here:** [`CLAUDE.md`](CLAUDE.md) (operating doc + guardrails) and
 [`README.md`](README.md) (quickstart + headline result). Code lives in
-`src/forecasting_lab/`; run `pytest` (143 tests) or `python -m forecasting_lab.cli.elo_backtest --synthetic`.
+`src/forecasting_lab/`; run `pytest` (158 tests) or `python -m forecasting_lab.cli.elo_backtest --synthetic`.
 
 The briefs (domain knowledge, mapped to modules in `CLAUDE.md`):
 

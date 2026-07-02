@@ -14,6 +14,7 @@ from collections import Counter
 from ..pipeline.base import Pipeline
 from ..pipeline.digest import render_digest
 from .entities import build_name_index, extract_themes, extract_tickers
+from .sentiment import score_text
 from .watchlist import WATCHLIST
 
 
@@ -52,6 +53,7 @@ class MediaWatchPipeline(Pipeline):
         index = build_name_index()
         ticker_buzz: Counter = Counter()
         theme_buzz: Counter = Counter()
+        ticker_sent: dict[str, list[float]] = {}
         talking: list[str] = []
         reachable = False
 
@@ -61,8 +63,11 @@ class MediaWatchPipeline(Pipeline):
             if texts:
                 reachable = True
             for text in texts:
+                tone = score_text(text)
                 for t in extract_tickers(text, index):
                     ticker_buzz[t] += 1
+                    if tone:
+                        ticker_sent.setdefault(t, []).append(tone)
                 for th in extract_themes(text):
                     theme_buzz[th] += 1
             latest = (blob["videos"][:2] and [v["title"] for v in blob["videos"][:2]]) or blob["headlines"][:2]
@@ -70,6 +75,7 @@ class MediaWatchPipeline(Pipeline):
                 talking.append(f"- **{voice}** ({blob['lens']}): " + " / ".join(latest))
 
         self.buzz = dict(ticker_buzz)  # exposed for other signals
+        self.sentiment = {t: sum(v) / len(v) for t, v in ticker_sent.items()}  # avg tone per ticker
 
         if not reachable:
             body = "_no media reachable (blocked on this network; live in the cloud)_"
@@ -78,8 +84,16 @@ class MediaWatchPipeline(Pipeline):
             ticker_tbl = _counter_table(ticker_buzz, "ticker", self.top) or "_no tickers named_"
             theme_tbl = _counter_table(theme_buzz, "theme", 8) or "_no themes flagged_"
             lenses = sorted({ch.lens for ch in self.channels})
+            sent_rows = sorted(self.sentiment.items(), key=lambda kv: kv[1], reverse=True)
+            if sent_rows:
+                pos = ", ".join(f"{t} (+{s:.2f})" for t, s in sent_rows[:3] if s > 0)
+                neg = ", ".join(f"{t} ({s:.2f})" for t, s in reversed(sent_rows[-3:]) if s < 0)
+                sentiment_line = f"most positive tone: {pos or 'none'}; most negative: {neg or 'none'}"
+            else:
+                sentiment_line = "_no toned coverage_"
             sections = {
                 "Most-named tickers (attention, not endorsement)": ticker_tbl,
+                "Tone (finance lexicon; weak proxy, validate before trusting)": sentiment_line,
                 "Hot themes": theme_tbl,
                 "What the voices are on today": "\n".join(talking) or "_quiet_",
                 "Coverage": f"{len(self.channels)} voices watched across {len(lenses)} lenses "

@@ -31,6 +31,8 @@ def main(argv=None) -> int:
     ap.add_argument("--setup", action="store_true", help="print Discord/Telegram setup steps and exit")
     ap.add_argument("--test", action="store_true", help="send a one-line test ping")
     ap.add_argument("--dry-run", action="store_true", help="print the alert without sending")
+    ap.add_argument("--only-if-flagged", action="store_true",
+                    help="stay silent on quiet days (send only when a divergence/trending flag fires)")
     args = ap.parse_args(argv)
 
     if args.setup:
@@ -38,6 +40,11 @@ def main(argv=None) -> int:
         return 0
 
     from ..alerts import build_alert, channels_configured, send
+    from ..alerts.summary import has_flags
+
+    if args.only_if_flagged and not args.test and not has_flags():
+        print("Quiet day, nothing flagged - skipping alert (--only-if-flagged).")
+        return 0
 
     if args.test:
         delivered = send("Test alert - if you see this, Forecasting Lab alerts work.", title="Forecasting Lab test")

@@ -16,7 +16,10 @@ import pandas as pd
 from ..config import PATHS
 from ..eval.metrics import reliability_table, summary
 
-COLUMNS = ["id", "date", "venue", "question", "prob", "outcome", "resolved_date", "notes"]
+COLUMNS = [
+    "id", "date", "venue", "market_id", "question", "prob", "market_prob",
+    "outcome", "resolved_date", "notes",
+]
 
 
 class ForecastLog:
@@ -38,11 +41,12 @@ class ForecastLog:
         """Force text/date columns to object so string assignment never trips the
         float64 dtype an all-empty column gets after ``read_csv``."""
         df = df.copy()
-        for col in ("date", "venue", "question", "notes", "resolved_date", "outcome"):
+        for col in ("date", "venue", "market_id", "question", "notes", "resolved_date", "outcome"):
             if col in df.columns:
                 df[col] = df[col].astype(object)
-        if "prob" in df.columns:
-            df["prob"] = pd.to_numeric(df["prob"], errors="coerce")
+        for col in ("prob", "market_prob"):
+            if col in df.columns:
+                df[col] = pd.to_numeric(df[col], errors="coerce")
         return df
 
     # ---- mutate --------------------------------------------------------
@@ -53,17 +57,27 @@ class ForecastLog:
         venue: str = "",
         on: _date | None = None,
         notes: str = "",
+        market_id: str = "",
+        market_prob: float | None = None,
     ) -> int:
-        """Log a new forecast. Returns its id."""
+        """Log a new forecast. Returns its id.
+
+        ``market_id`` links to a venue market for auto-resolution; ``market_prob``
+        records the market's price at decision time so resolution can score you
+        *against the market* (the beat-the-closing-line test)."""
         if not 0.0 <= prob <= 1.0:
             raise ValueError("prob must be in [0, 1]")
+        if market_prob is not None and not 0.0 <= market_prob <= 1.0:
+            raise ValueError("market_prob must be in [0, 1]")
         new_id = (int(self.df["id"].max()) + 1) if len(self.df) else 1
         row = {
             "id": new_id,
             "date": (on or _date.today()).isoformat(),
             "venue": venue,
+            "market_id": market_id,
             "question": question,
             "prob": float(prob),
+            "market_prob": float(market_prob) if market_prob is not None else pd.NA,
             "outcome": pd.NA,
             "resolved_date": pd.NA,
             "notes": notes,
@@ -82,6 +96,26 @@ class ForecastLog:
         self.df.loc[mask, "outcome"] = int(outcome)
         self.df.loc[mask, "resolved_date"] = (on or _date.today()).isoformat()
         self.save()
+
+    def resolve_open(self, resolver) -> int:
+        """Auto-resolve unresolved forecasts that carry a ``market_id``.
+
+        ``resolver(venue, market_id) -> 0 | 1 | None`` looks up the venue's
+        settlement (None = not settled yet). Returns how many were resolved.
+        This is what turns the daily run into a self-scoring track record."""
+        df = self.df
+        outcome_num = pd.to_numeric(df["outcome"], errors="coerce")
+        open_mask = outcome_num.isna() & df["market_id"].astype("string").fillna("").ne("")
+        resolved = 0
+        for idx in df.index[open_mask]:
+            outcome = resolver(df.at[idx, "venue"], df.at[idx, "market_id"])
+            if outcome in (0, 1):
+                df.at[idx, "outcome"] = int(outcome)
+                df.at[idx, "resolved_date"] = _date.today().isoformat()
+                resolved += 1
+        if resolved:
+            self.save()
+        return resolved
 
     def save(self) -> None:
         self.path.parent.mkdir(parents=True, exist_ok=True)
@@ -108,3 +142,28 @@ class ForecastLog:
         if res.empty:
             raise ValueError("no resolved forecasts to score yet")
         return reliability_table(res["outcome"].to_numpy(), res["prob"].to_numpy(), n_bins=n_bins)
+
+    def beat_market_score(self) -> dict:
+        """Beat-the-closing-line: did your probs beat the market's, after the fact?
+
+        Over resolved forecasts that recorded a ``market_prob``, compares your
+        Brier to the market's and the fraction of times you were closer to the
+        truth. ``brier_skill_vs_market > 0`` means genuine edge over the price —
+        the thing that actually distinguishes skill from mere calibration."""
+        res = self.resolved()
+        res = res[pd.to_numeric(res["market_prob"], errors="coerce").notna()]
+        if res.empty:
+            return {"n": 0}
+        y = res["outcome"].to_numpy(dtype=float)
+        model_p = res["prob"].to_numpy(dtype=float)
+        mkt_p = pd.to_numeric(res["market_prob"]).to_numpy(dtype=float)
+        model_brier = float(((model_p - y) ** 2).mean())
+        market_brier = float(((mkt_p - y) ** 2).mean())
+        beat_rate = float((abs(model_p - y) < abs(mkt_p - y)).mean())
+        return {
+            "n": int(len(res)),
+            "model_brier": model_brier,
+            "market_brier": market_brier,
+            "brier_skill_vs_market": (1.0 - model_brier / market_brier) if market_brier else 0.0,
+            "beat_rate": beat_rate,
+        }

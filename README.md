@@ -1,5 +1,11 @@
 # Forecasting & Market Analytics Lab
 
+![CI](https://github.com/Spoonxs/forecasting-lab/actions/workflows/ci.yml/badge.svg)
+![daily-lab](https://github.com/Spoonxs/forecasting-lab/actions/workflows/daily.yml/badge.svg)
+![python](https://img.shields.io/badge/python-3.10%2B-blue)
+![tests](https://img.shields.io/badge/tests-158-brightgreen)
+![license](https://img.shields.io/badge/license-MIT-informational)
+
 A research platform for forecasting real-world events using **prediction markets**,
 **sports Elo models**, and an **alt-data signal layer** underneath — with the
 rigor (leak-free validation, realistic costs, calibration scoring) that quant
@@ -37,7 +43,7 @@ for the map and the non-negotiable guardrails.
 
 ```bash
 pip install -e ".[all]"      # core is light (numpy/pandas); ml/markets/viz are extras
-pytest                       # 143 tests, a few seconds, no network needed
+pytest                       # 158 tests, a few seconds, no network needed
 ```
 
 Run the headline demo — fit a **time-forward** tennis Elo on synthetic data and
@@ -104,7 +110,7 @@ forecasting-lab/
 ├── CLAUDE.md                  operating doc: guardrails, repo map, conventions
 ├── *.md                       the briefs (domain knowledge, plan, learning path)
 ├── src/forecasting_lab/       the package (eval, sports, markets, ml, backtest, signals, ...)
-├── tests/                     143 property-based tests
+├── tests/                     158 property-based tests
 ├── inputs/                    dated research digests land here (gitignored)
 ├── pyproject.toml             packaging + extras + console scripts
 └── requirements.txt

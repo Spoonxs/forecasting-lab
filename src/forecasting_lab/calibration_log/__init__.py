@@ -7,5 +7,6 @@ prediction gets a probability; resolved ones get scored over time. See
 """
 
 from .log import ForecastLog
+from .resolve import venue_resolver
 
-__all__ = ["ForecastLog"]
+__all__ = ["ForecastLog", "venue_resolver"]

@@ -14,7 +14,14 @@ from __future__ import annotations
 import argparse
 import traceback
 
-JOBS = ("research", "media", "trending", "divergence", "macro", "sim", "forward", "dashboard", "alert")
+JOBS = ("resolve", "research", "media", "trending", "divergence", "macro", "sim", "forward", "dashboard", "alert")
+
+
+def _job_resolve():
+    from ..calibration_log import ForecastLog, venue_resolver
+
+    n = ForecastLog().resolve_open(venue_resolver)
+    return f"auto-resolved {n} forecast(s) from venue settlement"
 
 
 def _job_research():
@@ -108,6 +115,7 @@ def main(argv=None) -> int:
     jobs = [j for j in jobs if j not in ("dashboard", "alert")] + tail
 
     runners = {
+        "resolve": _job_resolve,
         "research": _job_research,
         "media": _job_media,
         "trending": lambda: _job_trending(args.trending_count),

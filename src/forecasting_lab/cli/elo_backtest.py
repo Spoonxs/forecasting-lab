@@ -58,10 +58,18 @@ def _run_nba(args) -> int:
 
 def _run_soccer(args) -> int:
     """Fit + score the soccer Elo (Davidson draw model) on a synthetic league."""
-    from ..sports.soccer import SoccerElo, evaluate_rps, synthetic_league
+    from ..sports.soccer import SoccerElo, evaluate_rps, load_matches, synthetic_league
 
-    league = synthetic_league(seed=0)
-    print(f"Loaded {len(league):,} matches across {league['season'].nunique()} seasons.")
+    if args.real:
+        try:
+            league = load_matches(season=args.season, div=args.div)
+            print(f"Loaded {len(league):,} real matches ({args.div} {args.season}, football-data.co.uk).")
+        except Exception as exc:  # noqa: BLE001
+            print(f"Real soccer fetch failed ({exc}); falling back to synthetic.")
+            league = synthetic_league(seed=0)
+    else:
+        league = synthetic_league(seed=0)
+        print(f"Loaded {len(league):,} synthetic matches across {league['season'].nunique()} seasons.")
     model = SoccerElo(k_factor=args.k or 20.0)
     preds = model.fit(league)
     ev = preds[preds["min_games"] >= args.min_matches]
@@ -77,6 +85,9 @@ def _run_soccer(args) -> int:
 def main(argv=None) -> int:
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--sport", default="tennis", choices=["tennis", "nba", "soccer"])
+    ap.add_argument("--real", action="store_true", help="use a real data source (soccer: football-data.co.uk)")
+    ap.add_argument("--season", default="2324", help="soccer season code, e.g. 2324")
+    ap.add_argument("--div", default="E0", help="soccer division: E0 EPL, D1 Bundesliga, SP1 LaLiga, I1 SerieA")
     ap.add_argument("--years", nargs="*", type=int, help="Sackmann seasons, e.g. 2021 2022 2023")
     ap.add_argument("--tour", default="atp", choices=["atp", "wta"])
     ap.add_argument("--synthetic", action="store_true", help="use generated data (no network)")

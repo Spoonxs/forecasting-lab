@@ -146,6 +146,13 @@ heavier tools only when a real need appears. The map:
   scheduler is the 90% solution; add a vector store the day you want to *ask
   questions across* the accumulated digests rather than just read the latest.
 
+> **RAG is deliberately deferred (a decision, not an oversight).** Building a
+> retrieval layer over zero accumulated digests would be unused infrastructure —
+> exactly the bloat this repo argues against. The right trigger: once the daily
+> job has filed a few weeks of digests + a real calibration history, add
+> **DuckDB or pgvector** + **LlamaIndex** to ask questions across the corpus
+> ("what did the media watch say before each big move?"). Not before.
+
 ---
 
 *Last updated: 2026-07-01*

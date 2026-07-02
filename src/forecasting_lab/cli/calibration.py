@@ -31,6 +31,8 @@ def main(argv=None) -> int:
     res.add_argument("--outcome", type=int, choices=[0, 1], required=True)
 
     sub.add_parser("score", help="Brier / log loss / calibration over resolved forecasts")
+    sub.add_parser("resolve-open", help="auto-resolve open forecasts from venue settlement")
+    sub.add_parser("beat", help="beat-the-closing-line: your Brier vs the market's")
     sub.add_parser("show", help="print the whole log")
 
     args = ap.parse_args(argv)
@@ -53,6 +55,21 @@ def main(argv=None) -> int:
         print(f"  Brier skill score  {s['brier_skill_score']:+.4f}")
         print(f"  Log loss           {s['log_loss']:.4f}")
         print(f"  ECE                {s['ece']:.4f}")
+    elif args.cmd == "resolve-open":
+        from ..calibration_log import venue_resolver
+
+        n = log.resolve_open(venue_resolver)
+        print(f"Auto-resolved {n} forecast(s) from venue settlement.")
+    elif args.cmd == "beat":
+        b = log.beat_market_score()
+        if not b.get("n"):
+            print("No resolved forecasts with a recorded market price yet.")
+            return 0
+        print(f"Beat-the-closing-line over {b['n']} resolved forecasts:")
+        print(f"  Your Brier         {b['model_brier']:.4f}")
+        print(f"  Market Brier       {b['market_brier']:.4f}")
+        print(f"  Skill vs market    {b['brier_skill_vs_market']:+.4f}   (>0 = edge over the price)")
+        print(f"  Beat rate          {b['beat_rate']:.1%}")
     elif args.cmd == "show":
         df = log.to_frame()
         print(df.to_string(index=False) if len(df) else "Log is empty.")

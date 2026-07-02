@@ -131,6 +131,36 @@ def evaluate_rps(preds: pd.DataFrame) -> dict:
     }
 
 
+_FOOTBALL_DATA = "https://www.football-data.co.uk/mmz4281/{season}/{div}.csv"
+
+
+def load_matches(season: str = "2324", div: str = "E0") -> pd.DataFrame:
+    """Real match results from football-data.co.uk (free).
+
+    ``season`` is their code (e.g. "2324" = 2023/24); ``div`` is the division
+    (E0 = Premier League, D1 = Bundesliga, SP1 = La Liga, I1 = Serie A, F1 = Ligue 1).
+    Returns the same shape as :func:`synthetic_league`: date/season/home/away/
+    home_goals/away_goals. Works from any unblocked network (incl. GitHub runners)."""
+    import io
+
+    from ..utils.http import HttpClient
+
+    url = _FOOTBALL_DATA.format(season=season, div=div)
+    text = HttpClient().get(url).text
+    raw = pd.read_csv(io.StringIO(text))
+    out = pd.DataFrame(
+        {
+            "date": pd.to_datetime(raw["Date"], dayfirst=True, errors="coerce"),
+            "season": f"{div}-{season}",
+            "home": raw["HomeTeam"].astype("string"),
+            "away": raw["AwayTeam"].astype("string"),
+            "home_goals": pd.to_numeric(raw["FTHG"], errors="coerce"),
+            "away_goals": pd.to_numeric(raw["FTAG"], errors="coerce"),
+        }
+    )
+    return out.dropna(subset=["home", "away", "home_goals", "away_goals", "date"]).reset_index(drop=True)
+
+
 def synthetic_league(n_teams: int = 20, n_seasons: int = 3, seed: int = 0) -> pd.DataFrame:
     """Double round-robin seasons from latent strengths (Poisson goals w/ home edge)."""
     rng = np.random.default_rng(seed)

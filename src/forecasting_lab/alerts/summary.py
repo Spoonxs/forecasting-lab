@@ -107,3 +107,9 @@ def build_alert(on: _date | None = None) -> tuple[str, str, list[dict]]:
 def compose_alert(on: _date | None = None) -> str:
     """The readable text version (for callers/tests that want a single string)."""
     return build_alert(on)[1]
+
+
+def has_flags(on: _date | None = None) -> bool:
+    """True if any *flagged* signal (divergence/trending) is present today —
+    used by ``--only-if-flagged`` to stay quiet on nothing days."""
+    return _gather(on or _date.today())[1]

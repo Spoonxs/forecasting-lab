@@ -25,13 +25,20 @@ def build_session(
 ) -> requests.Session:
     """A requests.Session that retries idempotent calls with exponential backoff."""
     s = get_settings()
-    retries = Retry(
+    retry_kwargs = dict(
         total=max_retries if max_retries is not None else s.http_max_retries,
         backoff_factor=backoff if backoff is not None else s.http_backoff,
         status_forcelist=(429, 500, 502, 503, 504),
         allowed_methods=frozenset({"GET", "POST"}),
         raise_on_status=False,
+        respect_retry_after_header=True,
     )
+    # backoff_jitter (urllib3 >= 2) spreads retries so a fleet of daily jobs and
+    # 100+ channel pulls don't hammer a throttling host in lockstep.
+    try:
+        retries = Retry(backoff_jitter=0.5, **retry_kwargs)
+    except TypeError:  # older urllib3 without backoff_jitter
+        retries = Retry(**retry_kwargs)
     adapter = HTTPAdapter(max_retries=retries)
     session = requests.Session()
     session.mount("https://", adapter)

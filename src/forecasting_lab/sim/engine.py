@@ -146,12 +146,30 @@ class Arena:
 
     # ---- reporting ---------------------------------------------------------
     def leaderboard(self) -> pd.DataFrame:
-        rows = {
-            name: _stats(np.asarray(rets, dtype=float)) for name, rets in self.returns.items()
-        }
+        from ..eval.deflated import deflated_sharpe_ratio
+
+        n_trials = max(2, len(self.returns))  # multiple-testing penalty = # strategies raced
+        rows = {}
+        for name, rets in self.returns.items():
+            stats = _stats(np.asarray(rets, dtype=float))
+            stats["deflated_sharpe"] = deflated_sharpe_ratio(rets, n_trials)
+            rows[name] = stats
         board = pd.DataFrame(rows).T.sort_values("sharpe", ascending=False)
         board.index.name = "strategy"
         return board
+
+    def returns_frame(self) -> pd.DataFrame:
+        """Per-strategy return series as a (periods x strategies) frame."""
+        return pd.DataFrame({name: rets for name, rets in self.returns.items() if rets})
+
+    def overfitting_pbo(self, n_splits: int = 10) -> float:
+        """Probability the arena's in-sample winner is overfit (CSCV). 0 if too few bars."""
+        from ..eval.deflated import pbo_cscv
+
+        frame = self.returns_frame()
+        if frame.shape[0] < 20 or frame.shape[1] < 2:
+            return 0.0
+        return pbo_cscv(frame.to_numpy(), n_splits=n_splits)
 
     def equity_curves(self) -> pd.DataFrame:
         curves = {

@@ -287,14 +287,19 @@ def render_dashboard(state) -> str:
         forecast_body = _empty(fl["command"], note)
     else:
         s = fl["score"]
-        forecast_body = "".join(
-            [
-                _stat("resolved forecasts", str(s["n"]), f"of {fl['n_total']} logged"),
-                _stat("brier", _fmt(s["brier"]), accent=True),
-                _stat("skill", f"{s['brier_skill_score']:+.3f}"),
-                _stat("ece", _fmt(s["ece"])),
-            ]
-        )
+        cards = [
+            _stat("resolved forecasts", str(s["n"]), f"of {fl['n_total']} logged"),
+            _stat("brier", _fmt(s["brier"]), accent=True),
+            _stat("skill vs base rate", f"{s['brier_skill_score']:+.3f}"),
+            _stat("ece", _fmt(s["ece"])),
+        ]
+        beat = fl.get("beat") or {}
+        if beat.get("n"):
+            cards.append(_stat("skill vs market", f"{beat['brier_skill_vs_market']:+.3f}",
+                               f"beat the price {beat['beat_rate']:.0%} of {beat['n']}"))
+            cards.append('<p class="footnote">"skill vs market" is the beat-the-closing-line test '
+                         "— &gt;0 means your probabilities beat the market's, not just the base rate.</p>")
+        forecast_body = "".join(cards)
 
     # arena
     ar = state.arena
@@ -304,16 +309,21 @@ def render_dashboard(state) -> str:
         board_cols = [
             ("strategy", "strategy"),
             ("sharpe", "sharpe"),
+            ("deflated_sharpe", "deflated (P)"),
             ("total_return", "total return"),
             ("max_drawdown", "max drawdown"),
             ("bars", "bars"),
         ]
+        pbo = ar.get("pbo", 0.0)
         arena_body = (
             equity_svg(ar["curves"])
-            + _table(ar["leaderboard"], board_cols, int_cols=("bars",),
+            + _table(ar["leaderboard"], board_cols, int_cols=("bars",), number_cols=("deflated_sharpe",),
                      signed=("sharpe", "total_return", "max_drawdown"))
             + f'<p class="footnote">bar {ar["bar"]:,} of {ar["total_bars"]:,} · costs 10bps/turnover · '
-            f"dashed lines are the baselines a real strategy must beat</p>"
+            f"dashed lines are the baselines a real strategy must beat<br>"
+            f"<strong>deflated (P)</strong> = confidence the Sharpe survives the multiple-testing penalty "
+            f"(6 strategies raced); <strong>PBO {pbo:.0%}</strong> = probability the in-sample winner is "
+            f"overfit (CSCV). High PBO means don't trust the leader.</p>"
         )
 
     # sports tables

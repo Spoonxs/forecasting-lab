@@ -5,6 +5,14 @@
 meme names the trending scanner cares about. Falls back to the bundled snapshot
 (``_bundled.py``, 500+ tickers) when offline — so the count never drops below the
 promise even with no network.
+
+**Survivorship caveat (read before any cross-sectional study):** this universe is
+*current* membership — delisted and dropped names are gone, and today's S&P 500 is
+not the S&P 500 of five years ago. That's fine for a live scanner (you can only
+trade what exists now), but it is **survivorship-biased** for backtesting. A real
+cross-sectional study needs point-in-time constituents + delisted names (CRSP,
+Norgate, Polygon flat files); see ``ml-system-design.md``. Don't backtest a
+strategy on this list and believe the result.
 """
 
 from __future__ import annotations

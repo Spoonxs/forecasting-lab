@@ -1,0 +1,609 @@
+- generic [active] [ref=f8e1]:
+  - banner [ref=f8e2]:
+    - heading "Forecasting&Markets Lab" [level=1] [ref=f8e3]
+    - generic [ref=f8e5]: generated 2026-07-02 08:02
+  - main [ref=f8e6]:
+    - generic [ref=f8e7]:
+      - paragraph [ref=f8e8]: "> flab-elo --synthetic --plot"
+      - heading "Reliability — does 30% happen 30% of the time?" [level=2] [ref=f8e9]
+      - 'img "Reliability diagram: predicted probability vs observed frequency" [ref=f8e10]':
+        - generic [ref=f8e11]: "0.0"
+        - generic [ref=f8e12]: "0.0"
+        - generic [ref=f8e13]: "0.2"
+        - generic [ref=f8e14]: "0.2"
+        - generic [ref=f8e15]: "0.4"
+        - generic [ref=f8e16]: "0.4"
+        - generic [ref=f8e17]: "0.6"
+        - generic [ref=f8e18]: "0.6"
+        - generic [ref=f8e19]: "0.8"
+        - generic [ref=f8e20]: "0.8"
+        - generic [ref=f8e21]: "1.0"
+        - generic [ref=f8e22]: "1.0"
+        - generic [ref=f8e24]: THE HONESTY LINE — FORECAST = FREQUENCY
+        - 'generic "bin 0.0-0.1: predicted 0.067, observed 0.099 (n=222)" [ref=f8e26]'
+        - 'generic "bin 0.1-0.2: predicted 0.152, observed 0.156 (n=405)" [ref=f8e27]'
+        - 'generic "bin 0.2-0.3: predicted 0.252, observed 0.248 (n=404)" [ref=f8e28]'
+        - 'generic "bin 0.3-0.4: predicted 0.352, observed 0.376 (n=428)" [ref=f8e29]'
+        - 'generic "bin 0.4-0.5: predicted 0.450, observed 0.450 (n=447)" [ref=f8e30]'
+        - 'generic "bin 0.5-0.6: predicted 0.551, observed 0.528 (n=422)" [ref=f8e31]'
+        - 'generic "bin 0.6-0.7: predicted 0.649, observed 0.650 (n=409)" [ref=f8e32]'
+        - 'generic "bin 0.7-0.8: predicted 0.748, observed 0.708 (n=367)" [ref=f8e33]'
+        - 'generic "bin 0.8-0.9: predicted 0.847, observed 0.808 (n=360)" [ref=f8e34]'
+        - 'generic "bin 0.9-1.0: predicted 0.932, observed 0.890 (n=164)" [ref=f8e35]'
+        - generic [ref=f8e46]: forecast distribution
+        - generic [ref=f8e47]: observed frequency
+    - generic [ref=f8e48]:
+      - paragraph [ref=f8e49]: "> flab-elo --synthetic"
+      - heading "Calibration scorecard — tennis Elo" [level=2] [ref=f8e50]
+      - generic [ref=f8e51]:
+        - generic [ref=f8e52]: brier score
+        - generic [ref=f8e53]: "0.1937"
+        - generic [ref=f8e54]: base rate 0.2495
+      - generic [ref=f8e55]:
+        - generic [ref=f8e56]: brier skill
+        - generic [ref=f8e57]: "+0.2236"
+        - generic [ref=f8e58]: "> 0 beats climatology"
+      - generic [ref=f8e59]:
+        - generic [ref=f8e60]: ece
+        - generic [ref=f8e61]: "0.0183"
+        - generic [ref=f8e62]: gap to the honesty line
+      - generic [ref=f8e63]:
+        - generic [ref=f8e64]: log loss
+        - generic [ref=f8e65]: "0.5705"
+      - generic [ref=f8e66]:
+        - generic [ref=f8e67]: matches scored
+        - generic [ref=f8e68]: 3,628
+        - generic [ref=f8e69]: synthetic demo data
+      - generic [ref=f8e70]:
+        - heading "Why these numbers can be believed" [level=3] [ref=f8e71]
+        - list [ref=f8e72]:
+          - listitem [ref=f8e73]: + time-forward fit — every prediction made before its match
+          - listitem [ref=f8e74]: + purged walk-forward CV, never random k-fold
+          - listitem [ref=f8e75]: + costs modeled where money would trade
+          - listitem [ref=f8e76]: + base-rate baseline always shown next to the score
+          - listitem [ref=f8e77]: + a null-signal test pins the pipeline leak-free
+    - generic [ref=f8e78]:
+      - paragraph [ref=f8e79]: "> flab-elo --synthetic"
+      - heading "Tennis Elo — top rated" [level=2] [ref=f8e80]
+      - table [ref=f8e81]:
+        - rowgroup [ref=f8e82]:
+          - row "player elo" [ref=f8e83]:
+            - columnheader "player" [ref=f8e84]
+            - columnheader "elo" [ref=f8e85]
+        - rowgroup [ref=f8e86]:
+          - row "P047 1946.488" [ref=f8e87]:
+            - cell "P047" [ref=f8e88]
+            - cell "1946.488" [ref=f8e89]
+          - row "P041 1901.824" [ref=f8e90]:
+            - cell "P041" [ref=f8e91]
+            - cell "1901.824" [ref=f8e92]
+          - row "P048 1839.002" [ref=f8e93]:
+            - cell "P048" [ref=f8e94]
+            - cell "1839.002" [ref=f8e95]
+          - row "P021 1808.557" [ref=f8e96]:
+            - cell "P021" [ref=f8e97]
+            - cell "1808.557" [ref=f8e98]
+          - row "P049 1767.114" [ref=f8e99]:
+            - cell "P049" [ref=f8e100]
+            - cell "1767.114" [ref=f8e101]
+          - row "P042 1761.925" [ref=f8e102]:
+            - cell "P042" [ref=f8e103]
+            - cell "1761.925" [ref=f8e104]
+          - row "P062 1741.462" [ref=f8e105]:
+            - cell "P062" [ref=f8e106]
+            - cell "1741.462" [ref=f8e107]
+          - row "P039 1709.058" [ref=f8e108]:
+            - cell "P039" [ref=f8e109]
+            - cell "1709.058" [ref=f8e110]
+    - generic [ref=f8e111]:
+      - paragraph [ref=f8e112]: "> flab-elo --sport nba --synthetic"
+      - heading "NBA Elo — top rated" [level=2] [ref=f8e113]
+      - table [ref=f8e114]:
+        - rowgroup [ref=f8e115]:
+          - row "team elo" [ref=f8e116]:
+            - columnheader "team" [ref=f8e117]
+            - columnheader "elo" [ref=f8e118]
+        - rowgroup [ref=f8e119]:
+          - row "TEAM07 1681.469" [ref=f8e120]:
+            - cell "TEAM07" [ref=f8e121]
+            - cell "1681.469" [ref=f8e122]
+          - row "TEAM21 1653.362" [ref=f8e123]:
+            - cell "TEAM21" [ref=f8e124]
+            - cell "1653.362" [ref=f8e125]
+          - row "TEAM29 1649.654" [ref=f8e126]:
+            - cell "TEAM29" [ref=f8e127]
+            - cell "1649.654" [ref=f8e128]
+          - row "TEAM19 1626.813" [ref=f8e129]:
+            - cell "TEAM19" [ref=f8e130]
+            - cell "1626.813" [ref=f8e131]
+          - row "TEAM03 1605.017" [ref=f8e132]:
+            - cell "TEAM03" [ref=f8e133]
+            - cell "1605.017" [ref=f8e134]
+          - row "TEAM13 1602.149" [ref=f8e135]:
+            - cell "TEAM13" [ref=f8e136]
+            - cell "1602.149" [ref=f8e137]
+          - row "TEAM06 1582.786" [ref=f8e138]:
+            - cell "TEAM06" [ref=f8e139]
+            - cell "1582.786" [ref=f8e140]
+          - row "TEAM20 1571.086" [ref=f8e141]:
+            - cell "TEAM20" [ref=f8e142]
+            - cell "1571.086" [ref=f8e143]
+      - paragraph [ref=f8e144]: brier 0.2263 vs home base rate 0.587 · ece 0.0429 · synthetic demo data
+    - generic [ref=f8e145]:
+      - paragraph [ref=f8e146]: "> flab-elo --sport soccer --synthetic"
+      - heading "Soccer Elo — home/draw/away" [level=2] [ref=f8e147]
+      - generic [ref=f8e148]:
+        - generic [ref=f8e149]: ranked prob score
+        - generic [ref=f8e150]: "0.2057"
+        - generic [ref=f8e151]: baseline 0.235
+      - generic [ref=f8e152]:
+        - generic [ref=f8e153]: RPS skill
+        - generic [ref=f8e154]: "+0.124"
+        - generic [ref=f8e155]: "> 0 beats climatology"
+      - generic [ref=f8e156]:
+        - generic [ref=f8e157]: outcome mix
+        - generic [ref=f8e158]: 44%/22%/34%
+        - generic [ref=f8e159]: home / draw / away
+      - paragraph [ref=f8e160]: Davidson draw model, 3 outcomes · synthetic league
+    - generic [ref=f8e161]:
+      - paragraph [ref=f8e162]: "> flab-macro"
+      - heading "Macro nowcast — yield-curve recession odds" [level=2] [ref=f8e163]
+      - generic [ref=f8e164]:
+        - paragraph [ref=f8e165]: No macro read yet (needs FRED).
+        - code [ref=f8e166]: "> flab-macro (needs FRED; network required)"
+    - generic [ref=f8e167]:
+      - paragraph [ref=f8e168]: "> flab-calibration score"
+      - heading "Public forecast log" [level=2] [ref=f8e169]
+      - generic [ref=f8e170]:
+        - paragraph [ref=f8e171]: "No forecasts logged yet. The public track record starts with one line:"
+        - code [ref=f8e172]: "> flab-calibration record --question \"...\" --prob 0.35"
+    - generic [ref=f8e173]:
+      - paragraph [ref=f8e174]: "> flab-sim status"
+      - heading "Strategy arena — persistent paper-trading race" [level=2] [ref=f8e175]
+      - img "Strategy equity curves (log scale)" [ref=f8e176]:
+        - generic [ref=f8e177]: 1x
+        - generic [ref=f8e179]: meanrev_5d 1.1x
+        - generic [ref=f8e181]: momentum_60d 1.0x
+        - generic [ref=f8e183]: breakout_120d 1.0x
+        - generic [ref=f8e185]: buy_hold 1.0x
+        - generic [ref=f8e187]: voltarget_20d 1.0x
+        - generic [ref=f8e189]: random 1.0x
+      - table [ref=f8e190]:
+        - rowgroup [ref=f8e191]:
+          - row "strategy sharpe total return max drawdown bars" [ref=f8e192]:
+            - columnheader "strategy" [ref=f8e193]
+            - columnheader "sharpe" [ref=f8e194]
+            - columnheader "total return" [ref=f8e195]
+            - columnheader "max drawdown" [ref=f8e196]
+            - columnheader "bars" [ref=f8e197]
+        - rowgroup [ref=f8e198]:
+          - row "meanrev_5d +3.558 +0.056 -0.024 25" [ref=f8e199]:
+            - cell "meanrev_5d" [ref=f8e200]
+            - cell "+3.558" [ref=f8e201]
+            - cell "+0.056" [ref=f8e202]
+            - cell "-0.024" [ref=f8e203]
+            - cell "25" [ref=f8e204]
+          - row "momentum_60d +1.119 +0.015 -0.023 25" [ref=f8e205]:
+            - cell "momentum_60d" [ref=f8e206]
+            - cell "+1.119" [ref=f8e207]
+            - cell "+0.015" [ref=f8e208]
+            - cell "-0.023" [ref=f8e209]
+            - cell "25" [ref=f8e210]
+          - row "buy_hold +0.528 +0.003 -0.011 25" [ref=f8e211]:
+            - cell "buy_hold" [ref=f8e212]
+            - cell "+0.528" [ref=f8e213]
+            - cell "+0.003" [ref=f8e214]
+            - cell "-0.011" [ref=f8e215]
+            - cell "25" [ref=f8e216]
+          - row "voltarget_20d +0.393 +0.002 -0.010 25" [ref=f8e217]:
+            - cell "voltarget_20d" [ref=f8e218]
+            - cell "+0.393" [ref=f8e219]
+            - cell "+0.002" [ref=f8e220]
+            - cell "-0.010" [ref=f8e221]
+            - cell "25" [ref=f8e222]
+          - row "breakout_120d +0.280 +0.004 -0.052 25" [ref=f8e223]:
+            - cell "breakout_120d" [ref=f8e224]
+            - cell "+0.280" [ref=f8e225]
+            - cell "+0.004" [ref=f8e226]
+            - cell "-0.052" [ref=f8e227]
+            - cell "25" [ref=f8e228]
+          - row "random -3.128 -0.048 -0.069 25" [ref=f8e229]:
+            - cell "random" [ref=f8e230]
+            - cell "-3.128" [ref=f8e231]
+            - cell "-0.048" [ref=f8e232]
+            - cell "-0.069" [ref=f8e233]
+            - cell "25" [ref=f8e234]
+      - paragraph [ref=f8e235]: bar 155 of 2,000 · costs 10bps/turnover · dashed lines are the baselines a real strategy must beat
+    - generic [ref=f8e236]:
+      - paragraph [ref=f8e237]: "> flab-forward status"
+      - heading "Forward study — real tickers, marked to market as time passes" [level=2] [ref=f8e238]
+      - img "Strategy equity curves (log scale)" [ref=f8e239]:
+        - generic [ref=f8e240]: 1x
+        - generic [ref=f8e241]: 2x
+        - generic [ref=f8e243]: momentum_60d 2.1x
+        - generic [ref=f8e245]: meanrev_5d 1.4x
+        - generic [ref=f8e247]: buy_hold 1.3x
+        - generic [ref=f8e249]: voltarget_20d 1.1x
+        - generic [ref=f8e251]: breakout_120d 1.1x
+        - generic [ref=f8e253]: random 1.1x
+      - table [ref=f8e254]:
+        - rowgroup [ref=f8e255]:
+          - row "strategy equity (x) live return live marks as of" [ref=f8e256]:
+            - columnheader "strategy" [ref=f8e257]
+            - columnheader "equity (x)" [ref=f8e258]
+            - columnheader "live return" [ref=f8e259]
+            - columnheader "live marks" [ref=f8e260]
+            - columnheader "as of" [ref=f8e261]
+        - rowgroup [ref=f8e262]:
+          - row "momentum_60d 2.107 +0.000 0 2026-07-01" [ref=f8e263]:
+            - cell "momentum_60d" [ref=f8e264]
+            - cell "2.107" [ref=f8e265]
+            - cell "+0.000" [ref=f8e266]
+            - cell "0" [ref=f8e267]
+            - cell "2026-07-01" [ref=f8e268]
+          - row "meanrev_5d 1.434 +0.000 0 2026-07-01" [ref=f8e269]:
+            - cell "meanrev_5d" [ref=f8e270]
+            - cell "1.434" [ref=f8e271]
+            - cell "+0.000" [ref=f8e272]
+            - cell "0" [ref=f8e273]
+            - cell "2026-07-01" [ref=f8e274]
+          - row "buy_hold 1.267 +0.000 0 2026-07-01" [ref=f8e275]:
+            - cell "buy_hold" [ref=f8e276]
+            - cell "1.267" [ref=f8e277]
+            - cell "+0.000" [ref=f8e278]
+            - cell "0" [ref=f8e279]
+            - cell "2026-07-01" [ref=f8e280]
+          - row "voltarget_20d 1.144 +0.000 0 2026-07-01" [ref=f8e281]:
+            - cell "voltarget_20d" [ref=f8e282]
+            - cell "1.144" [ref=f8e283]
+            - cell "+0.000" [ref=f8e284]
+            - cell "0" [ref=f8e285]
+            - cell "2026-07-01" [ref=f8e286]
+          - row "breakout_120d 1.130 +0.000 0 2026-07-01" [ref=f8e287]:
+            - cell "breakout_120d" [ref=f8e288]
+            - cell "1.130" [ref=f8e289]
+            - cell "+0.000" [ref=f8e290]
+            - cell "0" [ref=f8e291]
+            - cell "2026-07-01" [ref=f8e292]
+          - row "random 1.127 +0.000 0 2026-07-01" [ref=f8e293]:
+            - cell "random" [ref=f8e294]
+            - cell "1.127" [ref=f8e295]
+            - cell "+0.000" [ref=f8e296]
+            - cell "0" [ref=f8e297]
+            - cell "2026-07-01" [ref=f8e298]
+      - paragraph [ref=f8e299]: real basket, marked to market · all backfill so far; the live study begins on the next scheduled run
+    - generic [ref=f8e300]:
+      - paragraph [ref=f8e301]: "> forecasting_lab.sim.strategies"
+      - heading "How each strategy trades — in one line" [level=2] [ref=f8e302]
+      - generic [ref=f8e303]:
+        - generic [ref=f8e304]:
+          - generic [ref=f8e305]:
+            - generic [ref=f8e307]: momentum_60d
+            - generic [ref=f8e308]: trend
+            - generic [ref=f8e309]: "+1.12"
+          - paragraph [ref=f8e310]: Buy what's been rising. Holds the 3 strongest names over the last 60 bars — rides trends, gives back gains at turns.
+        - generic [ref=f8e311]:
+          - generic [ref=f8e312]:
+            - generic [ref=f8e314]: meanrev_5d
+            - generic [ref=f8e315]: contrarian
+            - generic [ref=f8e316]: "+3.56"
+          - paragraph [ref=f8e317]: Buy what just fell. Holds the 3 biggest 5-bar losers, betting on a bounce — churns hard, so costs bite.
+        - generic [ref=f8e318]:
+          - generic [ref=f8e319]:
+            - generic [ref=f8e321]: breakout_120d
+            - generic [ref=f8e322]: trend
+            - generic [ref=f8e323]: "+0.28"
+          - paragraph [ref=f8e324]: Buy new highs. Holds names within 2% of their 120-bar high — a classic breakout rule, cousin of momentum.
+        - generic [ref=f8e325]:
+          - generic [ref=f8e326]:
+            - generic [ref=f8e328]: voltarget_20d
+            - generic [ref=f8e329]: risk
+            - generic [ref=f8e330]: "+0.39"
+          - paragraph [ref=f8e331]: Own everything, calm names bigger. Weights inversely to 20-bar volatility — smooths the ride, doesn't pick winners.
+        - generic [ref=f8e332]:
+          - generic [ref=f8e333]:
+            - generic [ref=f8e335]: buy_hold
+            - generic [ref=f8e336]: baseline
+            - generic [ref=f8e337]: "+0.53"
+          - paragraph [ref=f8e338]: Own the whole market, equal-weight, never trade. The bar every strategy must clear after costs.
+        - generic [ref=f8e339]:
+          - generic [ref=f8e340]:
+            - generic [ref=f8e342]: random
+            - generic [ref=f8e343]: baseline
+            - generic [ref=f8e344]: "-3.13"
+          - paragraph [ref=f8e345]: Pick names by coin flip. The null hypothesis — if a strategy can't beat this, it has no skill.
+      - paragraph [ref=f8e346]: sharpe is each rule's live standing in the arena above · trend rules lead in trending regimes; the baselines are the honest bar
+    - generic [ref=f8e347]:
+      - paragraph [ref=f8e348]: "> flab-watch"
+      - heading "Media watch — what key voices are naming today" [level=2] [ref=f8e349]
+      - paragraph [ref=f8e350]: from 2026-07-02-media-watch.md
+      - heading "Most-named tickers (attention, not endorsement)" [level=3] [ref=f8e351]
+      - table [ref=f8e352]:
+        - rowgroup [ref=f8e353]:
+          - row "ticker mentions" [ref=f8e354]:
+            - columnheader "ticker" [ref=f8e355]
+            - columnheader "mentions" [ref=f8e356]
+        - rowgroup [ref=f8e357]:
+          - row "META 266" [ref=f8e358]:
+            - cell "META" [ref=f8e359]
+            - cell "266" [ref=f8e360]
+          - row "AMZN 46" [ref=f8e361]:
+            - cell "AMZN" [ref=f8e362]
+            - cell "46" [ref=f8e363]
+          - row "GOOGL 42" [ref=f8e364]:
+            - cell "GOOGL" [ref=f8e365]
+            - cell "42" [ref=f8e366]
+          - row "TSLA 35" [ref=f8e367]:
+            - cell "TSLA" [ref=f8e368]
+            - cell "35" [ref=f8e369]
+          - row "NVDA 19" [ref=f8e370]:
+            - cell "NVDA" [ref=f8e371]
+            - cell "19" [ref=f8e372]
+          - row "MU 16" [ref=f8e373]:
+            - cell "MU" [ref=f8e374]
+            - cell "16" [ref=f8e375]
+          - row "COIN 15" [ref=f8e376]:
+            - cell "COIN" [ref=f8e377]
+            - cell "15" [ref=f8e378]
+          - row "PLTR 13" [ref=f8e379]:
+            - cell "PLTR" [ref=f8e380]
+            - cell "13" [ref=f8e381]
+          - row "MSTR 6" [ref=f8e382]:
+            - cell "MSTR" [ref=f8e383]
+            - cell "6" [ref=f8e384]
+          - row "MSFT 5" [ref=f8e385]:
+            - cell "MSFT" [ref=f8e386]
+            - cell "5" [ref=f8e387]
+          - row "HOOD 4" [ref=f8e388]:
+            - cell "HOOD" [ref=f8e389]
+            - cell "4" [ref=f8e390]
+          - row "GME 4" [ref=f8e391]:
+            - cell "GME" [ref=f8e392]
+            - cell "4" [ref=f8e393]
+      - heading "Hot themes" [level=3] [ref=f8e394]
+      - table [ref=f8e395]:
+        - rowgroup [ref=f8e396]:
+          - row "theme mentions" [ref=f8e397]:
+            - columnheader "theme" [ref=f8e398]
+            - columnheader "mentions" [ref=f8e399]
+        - rowgroup [ref=f8e400]:
+          - row "crypto 231" [ref=f8e401]:
+            - cell "crypto" [ref=f8e402]
+            - cell "231" [ref=f8e403]
+          - row "AI 141" [ref=f8e404]:
+            - cell "AI" [ref=f8e405]
+            - cell "141" [ref=f8e406]
+          - row "rates 69" [ref=f8e407]:
+            - cell "rates" [ref=f8e408]
+            - cell "69" [ref=f8e409]
+          - row "meme 3" [ref=f8e410]:
+            - cell "meme" [ref=f8e411]
+            - cell "3" [ref=f8e412]
+      - heading "What the voices are on today" [level=3] [ref=f8e413]
+      - list [ref=f8e414]:
+        - listitem [ref=f8e415]:
+          - strong [ref=f8e416]: Bloomberg Television
+          - text: "(markets): This NFP Print Will Decide the July Fed: 3-Minutes MLIV / Apple Seeks Chinese-Made Chips, Tech Selloff Extends Into Asia | Daybreak Europe 7/2/2026"
+        - listitem [ref=f8e417]:
+          - strong [ref=f8e418]: CNBC
+          - text: "(markets): I like AMD on the dip, says Jim Cramer / Mad Money 07/01/26 | Audio Only"
+        - listitem [ref=f8e419]:
+          - strong [ref=f8e420]: Yahoo Finance
+          - text: "(markets): Trump was the highest US crypto earner in 2025, but did that come at the expense of everyone else? / Yahoo Finance Live: Daily Market Coverage - July 1, 2026 3PM - 5PM (ET)"
+        - listitem [ref=f8e421]:
+          - strong [ref=f8e422]: Reuters
+          - text: "(markets): Wall Street ends choppy session lower as tech shares drop - Reuters / Bending Spoons shares jump nearly 7% in US market debut - Reuters"
+        - listitem [ref=f8e423]:
+          - strong [ref=f8e424]: Wall Street Journal
+          - text: "(markets): What We Saw on Board Trump's New Air Force One Flight / Robinhood Made Baiju Bhatt a Billionaire. So Why Start Over? | The WSJ Money Interview"
+        - listitem [ref=f8e425]:
+          - strong [ref=f8e426]: Financial Times
+          - text: "(macro): The job market is reaccelerating. Is the economy? - Financial Times / FirstFT: OpenAI proposes US government stake - Financial Times"
+        - listitem [ref=f8e427]:
+          - strong [ref=f8e428]: MarketWatch
+          - text: "(markets): Could you save money by leaving Cali for Florida? 💸 #marketwatch #personalfinance #shorts / Could buying a sports team be a write-off? #marketwatch #finance #shorts"
+        - listitem [ref=f8e429]:
+          - strong [ref=f8e430]: Benzinga
+          - text: "(markets): The Difference Between an Asset and a Liability / PreMarket Playbook [LIVE] | July 2, 2026"
+      - heading "Coverage" [level=3] [ref=f8e431]
+      - paragraph [ref=f8e432]: 104 voices watched across 9 lenses (ai, crypto, geo, macro, markets, news, politics, tech, vc); YouTube auto-updates each run via RSS/yt-dlp.
+    - generic [ref=f8e433]:
+      - paragraph [ref=f8e434]: "> flab-trending"
+      - heading "Trending stocks — GME / NVIDIA shapes" [level=2] [ref=f8e435]
+      - paragraph [ref=f8e436]: from 2026-07-02-trending-stocks.md
+      - heading "Fast-money candidates (GME shape)" [level=3] [ref=f8e437]
+      - table [ref=f8e438]:
+        - rowgroup [ref=f8e439]:
+          - row "ticker fast_money volume_spike ret_5d news_intensity" [ref=f8e440]:
+            - columnheader "ticker" [ref=f8e441]
+            - columnheader "fast_money" [ref=f8e442]
+            - columnheader "volume_spike" [ref=f8e443]
+            - columnheader "ret_5d" [ref=f8e444]
+            - columnheader "news_intensity" [ref=f8e445]
+        - rowgroup [ref=f8e446]:
+          - row "LHAI 11.044 3399.604 2.854 15.000" [ref=f8e447]:
+            - cell "LHAI" [ref=f8e448]
+            - cell "11.044" [ref=f8e449]
+            - cell "3399.604" [ref=f8e450]
+            - cell "2.854" [ref=f8e451]
+            - cell "15.000" [ref=f8e452]
+          - row "META 5.785 2.471 0.099 75.000" [ref=f8e453]:
+            - cell "META" [ref=f8e454]
+            - cell "5.785" [ref=f8e455]
+            - cell "2.471" [ref=f8e456]
+            - cell "0.099" [ref=f8e457]
+            - cell "75.000" [ref=f8e458]
+          - row "MU 2.775 0.877 -0.015 45.000" [ref=f8e459]:
+            - cell "MU" [ref=f8e460]
+            - cell "2.775" [ref=f8e461]
+            - cell "0.877" [ref=f8e462]
+            - cell "-0.015" [ref=f8e463]
+            - cell "45.000" [ref=f8e464]
+          - row "SHOP 0.644 0.953 0.065 60.000" [ref=f8e465]:
+            - cell "SHOP" [ref=f8e466]
+            - cell "0.644" [ref=f8e467]
+            - cell "0.953" [ref=f8e468]
+            - cell "0.065" [ref=f8e469]
+            - cell "60.000" [ref=f8e470]
+          - row "RDDT 0.560 2.028 0.230 23.000" [ref=f8e471]:
+            - cell "RDDT" [ref=f8e472]
+            - cell "0.560" [ref=f8e473]
+            - cell "2.028" [ref=f8e474]
+            - cell "0.230" [ref=f8e475]
+            - cell "23.000" [ref=f8e476]
+      - heading "Secular-momentum candidates (NVIDIA shape)" [level=3] [ref=f8e477]
+      - table [ref=f8e478]:
+        - rowgroup [ref=f8e479]:
+          - row "ticker momentum ret_60d pct_from_high ret_20d" [ref=f8e480]:
+            - columnheader "ticker" [ref=f8e481]
+            - columnheader "momentum" [ref=f8e482]
+            - columnheader "ret_60d" [ref=f8e483]
+            - columnheader "pct_from_high" [ref=f8e484]
+            - columnheader "ret_20d" [ref=f8e485]
+        - rowgroup [ref=f8e486]:
+          - row "MUU 3.433 4.708 -0.310 -0.177" [ref=f8e487]:
+            - cell "MUU" [ref=f8e488]
+            - cell "3.433" [ref=f8e489]
+            - cell "4.708" [ref=f8e490]
+            - cell "-0.310" [ref=f8e491]
+            - cell "-0.177" [ref=f8e492]
+          - row "DRAM 2.098 1.259 -0.184 -0.053" [ref=f8e493]:
+            - cell "DRAM" [ref=f8e494]
+            - cell "2.098" [ref=f8e495]
+            - cell "1.259" [ref=f8e496]
+            - cell "-0.184" [ref=f8e497]
+            - cell "-0.053" [ref=f8e498]
+          - row "MU 1.760 1.733 -0.149 -0.030" [ref=f8e499]:
+            - cell "MU" [ref=f8e500]
+            - cell "1.760" [ref=f8e501]
+            - cell "1.733" [ref=f8e502]
+            - cell "-0.149" [ref=f8e503]
+            - cell "-0.030" [ref=f8e504]
+          - row "SNDK 1.712 1.804 -0.130 0.184" [ref=f8e505]:
+            - cell "SNDK" [ref=f8e506]
+            - cell "1.712" [ref=f8e507]
+            - cell "1.804" [ref=f8e508]
+            - cell "-0.130" [ref=f8e509]
+            - cell "0.184" [ref=f8e510]
+          - row "SOXL 1.688 2.969 -0.277 -0.183" [ref=f8e511]:
+            - cell "SOXL" [ref=f8e512]
+            - cell "1.688" [ref=f8e513]
+            - cell "2.969" [ref=f8e514]
+            - cell "-0.277" [ref=f8e515]
+            - cell "-0.183" [ref=f8e516]
+      - heading "Recent headlines (top fast-money names)" [level=3] [ref=f8e517]
+      - list [ref=f8e518]:
+        - listitem [ref=f8e519]:
+          - strong [ref=f8e520]: LHAI
+          - text: ": Linkhome Holdings Completes Acquisition of Mortgage One Group and Launches GPU Financing Business - Stock Titan"
+        - listitem [ref=f8e521]:
+          - strong [ref=f8e522]: LHAI
+          - text: ": $LHAI stock is up 122% today. Here's what we see in our data. - Quiver Quantitative"
+        - listitem [ref=f8e523]:
+          - strong [ref=f8e524]: LHAI
+          - text: ": LHAI Stock Rockets On Volume As Traders Hunt Volatility - StocksToTrade"
+        - listitem [ref=f8e525]:
+          - strong [ref=f8e526]: META
+          - text: ": Why Meta’s Move to the Cloud Is a Big Deal—and Bad News for CoreWeave and Nebius - Barron's"
+        - listitem [ref=f8e527]:
+          - strong [ref=f8e528]: META
+          - text: ": Stocks making the biggest moves midday: Meta, General Mills, Datadog, Sandisk & more - CNBC"
+        - listitem [ref=f8e529]:
+          - strong [ref=f8e530]: META
+          - text: ": Why Is Meta (META) Stock Soaring Today - Yahoo Finance"
+        - listitem [ref=f8e531]:
+          - strong [ref=f8e532]: MU
+          - text: ": Micron Stock Falls Even After Analyst Forecasts Strong Demand and $1,600 Target - Barron's"
+        - listitem [ref=f8e533]:
+          - strong [ref=f8e534]: MU
+          - text: ": Buy or Sell Micron Stock? (My Final Verdict) - The Motley Fool"
+      - heading "Coverage" [level=3] [ref=f8e535]
+      - paragraph [ref=f8e536]: "24 of 25 trending tickers had scoreable history. Reddit social velocity: live."
+    - generic [ref=f8e537]:
+      - paragraph [ref=f8e538]: "> flab-divergence --live"
+      - heading "Cross-venue divergence — Kalshi vs Polymarket" [level=2] [ref=f8e539]
+      - paragraph [ref=f8e540]: from 2026-07-02-market-divergence.md
+      - heading "Flagged markets (net of fees)" [level=3] [ref=f8e541]
+      - table [ref=f8e542]:
+        - rowgroup [ref=f8e543]:
+          - row "event kalshi_yes poly_yes net_edge direction matched poly title sim" [ref=f8e544]:
+            - columnheader "event" [ref=f8e545]
+            - columnheader "kalshi_yes" [ref=f8e546]
+            - columnheader "poly_yes" [ref=f8e547]
+            - columnheader "net_edge" [ref=f8e548]
+            - columnheader "direction" [ref=f8e549]
+            - columnheader "matched poly title" [ref=f8e550]
+            - columnheader "sim" [ref=f8e551]
+        - rowgroup [ref=f8e552]:
+          - row "Will Kamala Harris run for California Governor? 0.042 0.001 0.031 buy_poly Will Kamala Harris win the California Governor Election in 2026? 0.50" [ref=f8e553]:
+            - cell "Will Kamala Harris run for California Governor?" [ref=f8e554]
+            - cell "0.042" [ref=f8e555]
+            - cell "0.001" [ref=f8e556]
+            - cell "0.031" [ref=f8e557]
+            - cell "buy_poly" [ref=f8e558]
+            - cell "Will Kamala Harris win the California Governor Election in 2026?" [ref=f8e559]
+            - cell "0.50" [ref=f8e560]
+      - heading "Coverage" [level=3] [ref=f8e561]
+      - paragraph [ref=f8e562]: 125 Kalshi binary events and 800 Polymarket priced markets scanned; 1 title-matched at similarity >= 0.5.
+    - generic [ref=f8e563]:
+      - paragraph [ref=f8e564]: "> flab-research"
+      - heading "Quant research feed — arXiv, relevance-ranked" [level=2] [ref=f8e565]
+      - paragraph [ref=f8e566]: from 2026-07-02-research-digest.md
+      - heading "Top papers (15 relevant of 60 fetched)" [level=3] [ref=f8e567]
+      - list [ref=f8e568]:
+        - listitem [ref=f8e569]:
+          - strong [ref=f8e570]: "Regime-Conditional Distributional Comparison of Trading Strategies: A GAMLSS/ZAGA Framework Applied to the S&P 500"
+          - text: (2026-06-30, q-fin.ST) — relevance 7.5 via [backtest, walk-forward, momentum] — http://arxiv.org/abs/2606.31251v1
+        - listitem [ref=f8e571]:
+          - strong [ref=f8e572]: "End-to-End Parametric Portfolio Policies for Cross-Asset Futures Timing: When Do AI Models Beat Simple Rules?"
+          - text: (2026-07-01, q-fin.ST, q-fin.PM, q-fin.TR) — relevance 5.5 via [momentum, sharpe, portfolio, transformer] — http://arxiv.org/abs/2607.00475v1
+        - listitem [ref=f8e573]:
+          - strong [ref=f8e574]: Relational and Sequential Conformal Inference for Energy Time Series over Graphs via Foundation Models
+          - text: (2026-06-30, cs.LG, stat.ML) — relevance 3.0 via [calibration] — http://arxiv.org/abs/2606.31804v1
+        - listitem [ref=f8e575]:
+          - strong [ref=f8e576]: On Optimal Data Splitting for Split Conformal Prediction
+          - text: (2026-06-30, math.ST, cs.LG, stat.ML) — relevance 3.0 via [calibration] — http://arxiv.org/abs/2606.31600v1
+        - listitem [ref=f8e577]:
+          - strong [ref=f8e578]: Optimization Dynamics Imprint Semantic Specificity in Contrastive Embedding Norms
+          - text: (2026-06-29, stat.ML, cs.AI, cs.LG) — relevance 3.0 via [calibration] — http://arxiv.org/abs/2606.30625v1
+        - listitem [ref=f8e579]:
+          - strong [ref=f8e580]: Factorizable Normalizing Flows for parameter-dependent density morphing
+          - text: (2026-06-29, stat.ML, cs.LG, hep-ex) — relevance 3.0 via [calibration] — http://arxiv.org/abs/2606.30489v1
+        - listitem [ref=f8e581]:
+          - strong [ref=f8e582]: Signature-Based Optimal Execution for Statistical Arbitrage with Path-Dependent Trading Signals
+          - text: (2026-06-30, q-fin.TR) — relevance 2.5 via [backtest] — http://arxiv.org/abs/2606.31387v1
+        - listitem [ref=f8e583]:
+          - strong [ref=f8e584]: Decision-Aware Training for Sample-Based Generative Models
+          - text: (2026-07-01, cs.LG, stat.ML) — relevance 2.0 via [forecast] — http://arxiv.org/abs/2607.01171v1
+      - heading "Categories swept" [level=3] [ref=f8e585]
+      - paragraph [ref=f8e586]: q-fin.TR, q-fin.PM, q-fin.ST, q-fin.CP, q-fin.RM, stat.ML
+    - generic [ref=f8e587]:
+      - paragraph [ref=f8e588]: "> learning-investing.md"
+      - heading "Field guide — rules that survive real money" [level=2] [ref=f8e589]
+      - list [ref=f8e590]:
+        - listitem [ref=f8e591]:
+          - generic [ref=f8e592]: "1"
+          - text: Paying off expensive debt beats every strategy in this repo.
+        - listitem [ref=f8e593]:
+          - generic [ref=f8e594]: "2"
+          - text: Costs and taxes compound; minimize both before optimizing anything.
+        - listitem [ref=f8e595]:
+          - generic [ref=f8e596]: "3"
+          - text: Never trade money you cannot lose; size positions assuming you're wrong.
+        - listitem [ref=f8e597]:
+          - generic [ref=f8e598]: "4"
+          - text: Edge is measured — calibration log, walk-forward, after costs — never felt.
+        - listitem [ref=f8e599]:
+          - generic [ref=f8e600]: "5"
+          - text: If the pitch involves a Discord, a course, or urgency, you are the exit liquidity.
+        - listitem [ref=f8e601]:
+          - generic [ref=f8e602]: "6"
+          - text: "Leverage kills: markets stay irrational longer than you stay solvent."
+        - listitem [ref=f8e603]:
+          - generic [ref=f8e604]: "7"
+          - text: When in doubt, the answer is the boring index fund.
+      - paragraph [ref=f8e605]:
+        - text: the full curriculum — foundations → index core → market mechanics → the quant canon → forecasting psychology — lives in
+        - strong [ref=f8e606]: learning-investing.md
+        - text: . tier 0 and 1 come before believing any backtest.
+  - contentinfo [ref=f8e607]: time-respecting splits only · no look-ahead · costs modeled · calibration over accuracy · survivorship-bias-free or labeled synthetic · research system, not a recommendation engine
