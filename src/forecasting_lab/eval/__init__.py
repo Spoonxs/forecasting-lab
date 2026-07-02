@@ -1,0 +1,29 @@
+"""Evaluation: calibration over accuracy.
+
+Track Brier score and log loss on a held-out, time-forward test set, and always
+compare against the base-rate climatology. Accuracy is the wrong headline metric —
+a model that just picks the favorite looks good because favorites win most of the
+time. See ``project-forecasting-lab.md`` and ``ml-system-design.md``.
+"""
+
+from .metrics import (
+    brier_decomposition,
+    brier_score,
+    brier_skill_score,
+    expected_calibration_error,
+    log_loss,
+    maximum_calibration_error,
+    reliability_table,
+    summary,
+)
+
+__all__ = [
+    "brier_score",
+    "log_loss",
+    "brier_skill_score",
+    "brier_decomposition",
+    "reliability_table",
+    "expected_calibration_error",
+    "maximum_calibration_error",
+    "summary",
+]

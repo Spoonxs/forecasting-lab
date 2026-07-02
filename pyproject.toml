@@ -1,0 +1,69 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "forecasting-lab"
+version = "0.1.0"
+description = "A research platform for forecasting with prediction markets, sports Elo, and an alt-data signal layer. Methodology is the moat."
+readme = "README.md"
+requires-python = ">=3.10"
+license = { text = "MIT" }
+authors = [{ name = "Forecasting Lab" }]
+keywords = ["quant", "forecasting", "prediction-markets", "elo", "calibration", "backtesting"]
+
+# Core deps are deliberately light so the deterministic core (Elo, metrics,
+# calibration, CV, costs) runs anywhere. Heavier pieces are optional extras.
+dependencies = [
+    "numpy>=1.24",
+    "pandas>=2.0",
+    "requests>=2.28",
+    "pyyaml>=6.0",
+    "python-dotenv>=1.0",  # load .env (secrets, webhook) for scheduled runs
+]
+
+[project.optional-dependencies]
+ml = ["lightgbm>=4.0", "scikit-learn>=1.3", "scipy>=1.10"]
+markets = ["cryptography>=41.0"]   # Kalshi RSA-PSS signing
+viz = ["matplotlib>=3.7"]          # reliability diagrams
+dev = ["pytest>=7.4", "ruff>=0.4"]
+all = ["forecasting-lab[ml,markets,viz,dev]"]
+
+[project.scripts]
+flab-elo = "forecasting_lab.cli.elo_backtest:main"
+flab-signals = "forecasting_lab.cli.signal_scan:main"
+flab-divergence = "forecasting_lab.cli.market_divergence:main"
+flab-calibration = "forecasting_lab.cli.calibration:main"
+flab-trending = "forecasting_lab.cli.trending:main"
+flab-sim = "forecasting_lab.cli.sim:main"
+flab-dashboard = "forecasting_lab.cli.dashboard:main"
+flab-research = "forecasting_lab.cli.research:main"
+flab-macro = "forecasting_lab.cli.macro:main"
+flab-sources = "forecasting_lab.cli.sources:main"
+flab-forward = "forecasting_lab.cli.forward:main"
+flab-watch = "forecasting_lab.cli.watch:main"
+flab-alert = "forecasting_lab.cli.alert:main"
+flab-run-all = "forecasting_lab.cli.run_all:main"
+flab-cron = "forecasting_lab.cli.cron:main"
+
+[project.urls]
+Homepage = "https://github.com/"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+pythonpath = ["src"]
+testpaths = ["tests"]
+addopts = "-q"
+filterwarnings = [
+    "error::DeprecationWarning:forecasting_lab.*",
+]
+
+[tool.ruff]
+line-length = 100
+target-version = "py310"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B"]
+ignore = ["E501"]  # line length is handled by the formatter; docstrings run long

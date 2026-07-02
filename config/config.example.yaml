@@ -1,0 +1,14 @@
+# Copy to config/config.yaml to override defaults. config.yaml is gitignored.
+# Anything here layers over forecasting_lab.config.Settings.
+
+# HTTP client
+user_agent: "forecasting-lab/0.1 (research; contact via repo)"
+http_timeout: 20.0
+http_max_retries: 4
+http_backoff: 0.5
+
+# Cache TTL (seconds) for flaky public market endpoints
+cache_ttl_markets: 300
+
+# Kalshi: stay under ~10 req/s per key
+kalshi_min_interval: 0.12

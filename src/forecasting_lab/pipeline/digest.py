@@ -1,0 +1,54 @@
+"""Dated-digest rendering and writing.
+
+Digests are plain Markdown filed as ``inputs/YYYY-MM-DD-<slug>.md`` so they drop
+straight into an Obsidian vault. Write your own short summaries rather than
+storing source text verbatim — cleaner for reuse and avoids copyright issues.
+"""
+
+from __future__ import annotations
+
+from datetime import date as _date
+from pathlib import Path
+
+from ..config import PATHS
+
+
+def dated_note_path(slug: str, on: _date | None = None, out_dir: Path | None = None) -> Path:
+    on = on or _date.today()
+    out_dir = out_dir or PATHS.inputs
+    out_dir.mkdir(parents=True, exist_ok=True)
+    return out_dir / f"{on.isoformat()}-{slug}.md"
+
+
+def render_digest(
+    title: str,
+    sections: dict[str, str],
+    on: _date | None = None,
+    disclaimer: str | None = None,
+) -> str:
+    """Render a digest as Markdown. ``sections`` maps headings to body text."""
+    on = on or _date.today()
+    parts = [f"# {title}", "", f"*Generated: {on.isoformat()}*", ""]
+    for heading, body in sections.items():
+        parts.append(f"## {heading}")
+        parts.append("")
+        parts.append(body.rstrip())
+        parts.append("")
+    if disclaimer:
+        parts.append("---")
+        parts.append("")
+        parts.append(f"*{disclaimer}*")
+        parts.append("")
+    return "\n".join(parts)
+
+
+def write_dated_note(
+    slug: str,
+    body: str,
+    on: _date | None = None,
+    out_dir: Path | None = None,
+) -> Path:
+    """Write ``body`` to ``inputs/YYYY-MM-DD-<slug>.md`` and return the path."""
+    path = dated_note_path(slug, on=on, out_dir=out_dir)
+    path.write_text(body, encoding="utf-8")
+    return path

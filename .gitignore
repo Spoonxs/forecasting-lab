@@ -1,0 +1,47 @@
+# --- Python ---
+__pycache__/
+*.py[cod]
+*.egg-info/
+.eggs/
+build/
+dist/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+.venv/
+venv/
+env/
+
+# --- Secrets & local config ---
+.env
+config/config.yaml
+*.pem
+*.key
+kalshi_private_key.*
+
+# --- Data, caches, model artifacts (never commit raw or derived data) ---
+/data/
+/cache/
+*.parquet
+*.feather
+*.db
+*.sqlite
+mlruns/
+wandb/
+
+# --- Generated research digests (the pipeline writes these) ---
+/inputs/*
+!/inputs/.gitkeep
+!/inputs/README.md
+
+# --- Built dashboard (regenerate with flab-dashboard) ---
+/site/
+
+# --- OS / editor ---
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+*.swp
