@@ -17,9 +17,9 @@ def _reliability_records():
 def test_reliability_svg_has_line_dots_and_label():
     svg = reliability_svg(_reliability_records())
     assert svg.startswith("<svg") and svg.endswith("</svg>")
-    assert "THE HONESTY LINE" in svg
+    assert "a perfect model sits on this line" in svg  # the diagonal, in plain words
+    assert "what actually happened" in svg  # axis title, not jargon
     assert svg.count("<circle") == 10  # one dot per non-empty bin
-    assert "forecast distribution" in svg  # the histogram strip
 
 
 def test_reliability_svg_empty_bins_dont_crash():
@@ -34,8 +34,8 @@ def test_equity_svg_paths_and_baseline_dashes():
     curves = {"momentum_60d": [1.0, 1.1, 1.2], "random": [1.0, 0.99, 1.01]}
     svg = equity_svg(curves)
     assert svg.count("<path") == 2
-    assert "stroke-dasharray" in svg  # random is a dashed baseline
-    assert "momentum_60d" in svg and "1.2x" in svg
+    assert "stroke-dasharray" in svg  # random is a dashed control line
+    assert "Momentum" in svg and "Random (control)" in svg  # plain legend names
     assert "log scale" in svg  # equity compounds; the axis must too
 
 
@@ -81,34 +81,28 @@ def _minimal_state():
 def test_render_dashboard_full_page_with_empty_states():
     html = render_dashboard(_minimal_state())
     assert html.startswith("<!DOCTYPE html>")
-    # signature + honesty
-    assert "THE HONESTY LINE" in html
+    # honest framing is front and centre
     assert "not financial advice" in html
-    # every empty state carries the command that fills it
-    assert "flab-sim run --bars 250" in html
-    assert "flab-calibration" in html and "flab-trending" in html
-    # provenance eyebrows are the real commands
-    assert "flab-elo --sport nba --synthetic" in html
+    assert "Is it actually making money?" in html  # the honest FAQ
+    # plain-English section titles, not CLI commands
+    assert "Are the predictions trustworthy?" in html
+    assert "Strategy test (simulated)" in html
+    assert "How each strategy works" in html
+    assert "Economy check" in html
+    assert "The ground rules" in html
+    # at-a-glance verdicts translate the jargon
+    assert "Well-calibrated" in html
+    assert "558 sources tracked" in html
     # quality floor
     assert "prefers-reduced-motion" in html
     assert 'role="img"' in html
-    # learning + research sections present, with GSAP as enhancement only
-    assert "Field guide" in html and "learning-investing.md" in html
-    assert "flab-research" in html
-    assert "!window.gsap" in html and "showAll()" in html  # works without the CDN
-    assert 'class="no-js"' in html  # reveal is hidden only when JS is live
-    assert "@media print" in html  # content visible in print too
-    # new panels: strategy illustrations, macro, soccer, source count
-    assert "How each strategy trades" in html
-    assert "been rising" in html  # plain-language rule (apostrophe is HTML-escaped)
-    assert "Macro nowcast" in html and "Soccer Elo" in html
-    assert "558 sources tracked" in html
-    assert "Forward study" in html  # the real-time out-of-sample study
+    # plain-language strategy copy survives (apostrophe is HTML-escaped)
+    assert "been rising" in html
 
 
 def test_render_dashboard_escapes_html_in_data():
     state = _minimal_state()
-    state.tennis["leaderboard"] = [{"player": "<script>alert(1)</script>", "rating": 1500.0}]
+    state.generated = "<script>alert(1)</script>"
     html = render_dashboard(state)
     assert "<script>alert(1)</script>" not in html
     assert "&lt;script&gt;" in html

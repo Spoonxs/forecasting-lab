@@ -35,7 +35,7 @@ for the map and the non-negotiable guardrails.
 | Backtest | `forecasting_lab.backtest` | Exact Kalshi/Polymarket cost models, walk-forward backtester vs honest baselines |
 | Signals | `forecasting_lab.signals` | Squeeze + momentum composites, plus the **live trending-stocks scanner** (Yahoo trending/charts + Google News) for NVIDIA/GME shapes |
 | Arena | `forecasting_lab.sim` | Persistent paper-trading race: strategies vs honest baselines, turnover costs, resumable state |
-| Dashboard | `forecasting_lab.dashboard` | Single-file amber-terminal dashboard (hand-rolled SVG) of the whole lab |
+| Dashboard | `forecasting_lab.dashboard` | Single-file, self-explaining dashboard (hand-rolled SVG, plain-English sections) of the whole lab |
 | Track record | `forecasting_lab.calibration_log` | A public, Brier-scored forecasting log — the credibility artifact |
 | Pipeline | `forecasting_lab.pipeline` | invoke→fetch→process→store; files dated digests into `inputs/` |
 
@@ -79,7 +79,7 @@ flab-trending                               # scan trending stocks for GME/NVIDI
 flab-sim run --bars 250                     # advance the persistent strategy arena (resumes)
 flab-research                               # sweep recent arXiv q-fin papers, ranked -> inputs/
 flab-sources                                # report the 500+ tracked-source coverage
-flab-dashboard --open                       # build site/index.html (the amber-terminal lab view)
+flab-dashboard --open                       # build site/index.html (the plain-English lab dashboard)
 flab-watch                                  # ~100 key voices (YouTube+news) -> ticker/theme buzz
 flab-alert --setup                           # how to add a free Discord webhook (1 min)
 flab-alert --test                            # send a test ping to Discord/Telegram/local
