@@ -1,6 +1,7 @@
 import numpy as np
 
 from forecasting_lab.eval.deflated import (
+    deflated_sharpe_across,
     deflated_sharpe_ratio,
     expected_max_sharpe,
     pbo_cscv,
@@ -38,6 +39,17 @@ def test_deflated_below_psr_under_many_trials():
 
 def test_expected_max_sharpe_grows_with_trials():
     assert expected_max_sharpe(100, 0.1) > expected_max_sharpe(5, 0.1) > 0
+
+
+def test_deflated_across_preserves_sharpe_ranking():
+    # the strategy with the higher raw Sharpe must get the higher DEFLATED Sharpe
+    rng = np.random.default_rng(9)
+    good = rng.normal(0.0015, 0.01, 800)   # strong
+    ok = rng.normal(0.0005, 0.01, 800)     # weak
+    junk = rng.normal(-0.001, 0.01, 800)   # bad
+    d = deflated_sharpe_across({"good": good, "ok": ok, "junk": junk})
+    assert d["good"] > d["ok"] > d["junk"]  # ranking preserved, not inverted
+    assert all(0.0 <= v <= 1.0 for v in d.values())
 
 
 def test_pbo_high_for_noise_low_for_real_edge():

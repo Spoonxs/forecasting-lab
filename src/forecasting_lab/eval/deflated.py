@@ -67,20 +67,45 @@ def expected_max_sharpe(n_trials: int, sr_std_pp: float) -> float:
     return sr_std_pp * ((1 - gamma) * z1 + gamma * z2)
 
 
-def deflated_sharpe_ratio(returns, n_trials: int, periods_per_year: int = 252) -> float:
+def deflated_sharpe_ratio(
+    returns, n_trials: int, periods_per_year: int = 252, sr_std_pp: float | None = None
+) -> float:
     """PSR against the expected-max Sharpe from ``n_trials`` — the honest number.
 
-    Uses the observed per-period Sharpe as the trials' dispersion estimate (a
-    common practical proxy when the full trial set isn't retained)."""
+    ``sr_std_pp`` is the dispersion (std) of the trials' *per-period* Sharpes —
+    the correct multiple-testing input. Pass the std of the Sharpes across the
+    strategies you actually raced (see :func:`deflated_sharpe_across`). When it's
+    None, a rough proxy from this series' own length is used (a single-strategy
+    fallback), which does NOT rank strategies against each other."""
     r = np.asarray(returns, dtype=float)
     r = r[~np.isnan(r)]
     if r.size < 3:
         return 0.0
-    sr_pp = sharpe_ratio(r, periods_per_year) / math.sqrt(periods_per_year)
-    sr_std_pp = abs(sr_pp) if sr_pp else 1.0 / math.sqrt(r.size)
+    if sr_std_pp is None:
+        sr_std_pp = 1.0 / math.sqrt(r.size)  # dispersion under the null, per-period
     bench_pp = expected_max_sharpe(n_trials, sr_std_pp)
     return probabilistic_sharpe_ratio(r, benchmark_sr=bench_pp * math.sqrt(periods_per_year),
                                       periods_per_year=periods_per_year)
+
+
+def deflated_sharpe_across(returns_by_name: dict, periods_per_year: int = 252) -> dict:
+    """Deflated Sharpe for each strategy, using the *cross-strategy* Sharpe
+    dispersion as the multiple-testing benchmark (the correct DSR input).
+
+    Returns ``{name: deflated_sharpe}``. Higher raw Sharpe -> higher DSR, as it
+    should — the shared benchmark rises with how spread the trials' Sharpes are."""
+    names = [n for n, r in returns_by_name.items() if len(np.asarray(r)) >= 3]
+    if len(names) < 2:
+        return {n: 0.0 for n in returns_by_name}
+    per_period_sr = [sharpe_ratio(returns_by_name[n], periods_per_year=1) for n in names]
+    sr_std_pp = float(np.std(per_period_sr, ddof=1)) or 1.0 / math.sqrt(
+        max(len(np.asarray(returns_by_name[names[0]])), 2)
+    )
+    n_trials = len(names)
+    out = {n: 0.0 for n in returns_by_name}
+    for n in names:
+        out[n] = deflated_sharpe_ratio(returns_by_name[n], n_trials, periods_per_year, sr_std_pp)
+    return out
 
 
 def pbo_cscv(returns_matrix, n_splits: int = 12) -> float:

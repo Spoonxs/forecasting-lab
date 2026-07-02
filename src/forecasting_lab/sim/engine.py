@@ -146,13 +146,14 @@ class Arena:
 
     # ---- reporting ---------------------------------------------------------
     def leaderboard(self) -> pd.DataFrame:
-        from ..eval.deflated import deflated_sharpe_ratio
+        from ..eval.deflated import deflated_sharpe_across
 
-        n_trials = max(2, len(self.returns))  # multiple-testing penalty = # strategies raced
+        # deflate each strategy's Sharpe against the cross-strategy dispersion
+        deflated = deflated_sharpe_across({n: r for n, r in self.returns.items() if r})
         rows = {}
         for name, rets in self.returns.items():
             stats = _stats(np.asarray(rets, dtype=float))
-            stats["deflated_sharpe"] = deflated_sharpe_ratio(rets, n_trials)
+            stats["deflated_sharpe"] = deflated.get(name, 0.0)
             rows[name] = stats
         board = pd.DataFrame(rows).T.sort_values("sharpe", ascending=False)
         board.index.name = "strategy"

@@ -63,7 +63,7 @@ Briefs (domain knowledge, pulled on demand — not all read every session):
 ## Quickstart
 ```bash
 pip install -e ".[all]"        # or a subset: pip install -e ".[ml,markets,viz]"
-pytest                         # 158 tests, a few seconds, no network
+pytest                         # 159 tests, a few seconds, no network
 python -m forecasting_lab.cli.elo_backtest --synthetic   # headline calibration demo
 ```
 - Real tennis data: `flab-elo --years 2021 2022 2023 --tour atp` (downloads Sackmann CSVs to `data/`, cached). Data is CC BY-NC-SA — research/non-commercial only.

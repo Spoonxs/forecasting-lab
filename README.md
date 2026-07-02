@@ -3,7 +3,7 @@
 ![CI](https://github.com/Spoonxs/forecasting-lab/actions/workflows/ci.yml/badge.svg)
 ![daily-lab](https://github.com/Spoonxs/forecasting-lab/actions/workflows/daily.yml/badge.svg)
 ![python](https://img.shields.io/badge/python-3.10%2B-blue)
-![tests](https://img.shields.io/badge/tests-158-brightgreen)
+![tests](https://img.shields.io/badge/tests-159-brightgreen)
 ![license](https://img.shields.io/badge/license-MIT-informational)
 
 A research platform for forecasting real-world events using **prediction markets**,
@@ -43,7 +43,7 @@ for the map and the non-negotiable guardrails.
 
 ```bash
 pip install -e ".[all]"      # core is light (numpy/pandas); ml/markets/viz are extras
-pytest                       # 158 tests, a few seconds, no network needed
+pytest                       # 159 tests, a few seconds, no network needed
 ```
 
 Run the headline demo — fit a **time-forward** tennis Elo on synthetic data and

@@ -13,8 +13,8 @@ real track record. *Not financial advice.*
 | Tennis Elo | Brier | **0.194** | 0.250 base rate | synthetic (real via `--years` in cloud) |
 | Tennis Elo | ECE | **0.018** | — | calibrated |
 | NBA Elo | Brier | 0.227 | 0.243 home base rate | synthetic |
-| Soccer Elo | ranked prob score | 0.206 | 0.232 climatology | synthetic (real via `--real`) |
-| Strategy arena | momentum Sharpe | positive vs random/buy-hold | — | synthetic + real basket |
+| Soccer Elo | ranked prob score | **0.211** | 0.232 climatology | **real EPL 23/24** (380 matches) |
+| Strategy arena | momentum: Sharpe 2.35 / **deflated 0.88** / PBO 0.11 | beats random & buy-hold | — | synthetic |
 | Cross-venue | live flags after fees | surfaced, mostly reject on review | — | **live** Kalshi/Polymarket |
 
 Every score sits next to the baseline it must beat, because "accuracy" without a
