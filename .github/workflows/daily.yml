@@ -1,33 +1,27 @@
 name: daily-lab
 
-# Autonomous cloud run: every day GitHub's runners pull fresh data, run every
-# pipeline, and publish the dashboard to GitHub Pages. No server to maintain, and
-# — unlike a locked-down local network — Reddit, arXiv, FRED and the venues are
-# all reachable from GitHub's runners, so the social-velocity signal is live here.
-#
-# Setup (one time): Settings > Pages > Source = "GitHub Actions"; optionally add a
-# repository secret SEC_USER_AGENT = "your-project you@example.com".
+# Autonomous daily cloud run: pull fresh data, run every pipeline, post the Discord
+# alert, and publish the dashboard to GitHub Pages. Reddit/YouTube/arXiv/FRED are all
+# reachable from GitHub's runners. Two-job build/deploy shape matches GitHub's official
+# Pages template. Add repo secrets DISCORD_WEBHOOK_URL and (optionally) SEC_USER_AGENT.
 
 on:
   schedule:
-    - cron: "30 11 * * *" # 11:30 UTC (~07:30 US Eastern)
-  workflow_dispatch: {} # allow manual "Run workflow"
+    - cron: "30 11 * * *"
+  workflow_dispatch:
 
 permissions:
-  contents: write # commit the calibration log / arena state back
+  contents: write
   pages: write
   id-token: write
 
 concurrency:
-  group: daily-lab
+  group: pages
   cancel-in-progress: false
 
 jobs:
-  run:
+  build:
     runs-on: ubuntu-latest
-    environment:
-      name: github-pages
-      url: ${{ steps.deploy.outputs.page_url }}
     steps:
       - uses: actions/checkout@v4
 
@@ -39,32 +33,31 @@ jobs:
       - name: Install
         run: pip install -e ".[all]"
 
-      - name: Run all pipelines (failure-tolerant) + build dashboard + alert
+      - name: Run pipelines, build dashboard, send alert
         env:
-          SEC_USER_AGENT: ${{ secrets.SEC_USER_AGENT || 'forecasting-lab research contact@example.com' }}
-          # Add DISCORD_WEBHOOK_URL as a repo secret (Settings > Secrets and
-          # variables > Actions) — do NOT commit it. The daily run then posts
-          # the alert to your Discord even with your PC off.
+          SEC_USER_AGENT: ${{ secrets.SEC_USER_AGENT }}
           DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
         run: python -m forecasting_lab.cli.run_all
 
-      - name: Persist arena state + calibration log
+      - name: Persist arena + forward-study + calibration state
         run: |
-          git config user.name  "flab-bot"
+          git config user.name "flab-bot"
           git config user.email "flab-bot@users.noreply.github.com"
-          git add -f data/sim/arena_state.json data/forward/ledger.json calibration_log.csv 2>/dev/null || true
-          if ! git diff --cached --quiet; then
-            git commit -m "chore: daily arena + calibration state [skip ci]"
-            git push
-          else
-            echo "no state changes to commit"
-          fi
+          git add -f data/sim/arena_state.json data/forward/ledger.json calibration_log.csv || true
+          git diff --cached --quiet || (git commit -m "chore: daily state [skip ci]" && git push)
 
-      - name: Upload dashboard for Pages
+      - name: Upload dashboard artifact
         uses: actions/upload-pages-artifact@v3
         with:
           path: site
 
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
       - name: Deploy to GitHub Pages
-        id: deploy
+        id: deployment
         uses: actions/deploy-pages@v4
