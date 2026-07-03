@@ -39,11 +39,11 @@ jobs:
           DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
         run: python -m forecasting_lab.cli.run_all
 
-      - name: Persist arena + forward-study + calibration state
+      - name: Persist arena + forward-study + calibration + agent-desk state
         run: |
           git config user.name "flab-bot"
           git config user.email "flab-bot@users.noreply.github.com"
-          git add -f data/sim/arena_state.json data/forward/ledger.json calibration_log.csv || true
+          git add -f data/sim/arena_state.json data/forward/ledger.json calibration_log.csv data/agent/ledger.json || true
           git diff --cached --quiet || (git commit -m "chore: daily state [skip ci]" && git push)
 
       - name: Upload dashboard artifact
