@@ -145,7 +145,7 @@ def reliability_svg(records: list[dict], width=620, height=420) -> str:
         maxc = max(r["count"] for r in used)
         pts = [(sx(r["mean_pred"]), sy(r["frac_pos"])) for r in used]
         path = "M " + " L ".join(f"{x:.1f} {y:.1f}" for x, y in pts)
-        parts.append(f'<path d="{path}" fill="none" stroke="{ACCENT}" stroke-width="2.5"/>')
+        parts.append(f'<path d="{path}" fill="none" stroke="{ACCENT}" stroke-width="2.5" class="draw" pathLength="1"/>')
         for r, (x, y) in zip(used, pts, strict=True):
             rad = 3 + 7 * (r["count"] / maxc) ** 0.5
             parts.append(
@@ -199,12 +199,14 @@ def equity_svg(curves: dict[str, list[float]], width=780, height=300) -> str:
     for idx, name in enumerate(order):
         vals = curves[name]
         color = STRATEGY_COLORS.get(name, INK)
-        dash = ' stroke-dasharray="5 4"' if name in BASELINES else ""
+        # dashed baselines stay static; solid strategy lines draw on (dasharray would clash)
+        legdash = ' stroke-dasharray="5 4"' if name in BASELINES else ""
+        extra = legdash if name in BASELINES else ' class="draw" pathLength="1"'
         wdt = 2.6 if name == "ml_ranker" else 2
         path = "M " + " L ".join(f"{sx(i):.1f} {sy(v):.1f}" for i, v in enumerate(vals))
-        parts.append(f'<path d="{path}" fill="none" stroke="{color}" stroke-width="{wdt}"{dash}/>')
+        parts.append(f'<path d="{path}" fill="none" stroke="{color}" stroke-width="{wdt}"{extra}/>')
         ly = mt + 12 + idx * 20
-        parts.append(f'<line x1="{width-mr+8}" y1="{ly-4}" x2="{width-mr+26}" y2="{ly-4}" stroke="{color}" stroke-width="2.5"{dash}/>')
+        parts.append(f'<line x1="{width-mr+8}" y1="{ly-4}" x2="{width-mr+26}" y2="{ly-4}" stroke="{color}" stroke-width="2.5"{legdash}/>')
         parts.append(f'<text x="{width-mr+32}" y="{ly}" class="leg">{_esc(_plain(name))} <tspan fill="{MUTED}">{vals[-1]:.1f}&#215;</tspan></text>')
     parts.append("</svg>")
     return "".join(parts)
@@ -738,8 +740,13 @@ footer {{ margin-top:32px; padding-top:18px; border-top:1px solid var(--rule); f
 
 .reveal {{ animation:up .5s cubic-bezier(.2,.6,.2,1) both; }}
 @keyframes up {{ from {{ opacity:0; transform:translateY(8px); }} to {{ opacity:1; transform:none; }} }}
+.draw {{ stroke-dasharray:1; stroke-dashoffset:1; animation:draw .9s ease-out .15s forwards; }}
+@keyframes draw {{ to {{ stroke-dashoffset:0; }} }}
 a,button,.kpi {{ transition:color .15s ease, border-color .15s ease, background .15s ease; }}
-@media (prefers-reduced-motion:reduce) {{ .reveal {{ animation:none; }} }}
+@media (prefers-reduced-motion:reduce) {{
+  .reveal {{ animation:none; }}
+  .draw {{ animation:none; stroke-dasharray:none; stroke-dashoffset:0; }}
+}}
 @media (max-width:900px) {{
   .kpis {{ grid-template-columns:repeat(2,1fr); }}
   .kpi:nth-child(2) {{ border-right:0; }}
@@ -871,6 +878,17 @@ a,button,.kpi {{ transition:color .15s ease, border-color .15s ease, background 
     if(!isNaN(gen)){{ var m=Math.max(0,Math.round((Date.now()-gen)/60000));
       var ago=m<1?'just now':m<60?m+' min ago':Math.round(m/60)+'h ago';
       c.textContent='updated '+ago; }} }}
+  // gentle count-up on the numeric hero KPIs (reduced-motion respected)
+  if(window.matchMedia && !matchMedia('(prefers-reduced-motion: reduce)').matches){{
+    document.querySelectorAll('.kpi-val').forEach(function(el){{
+      var mm=el.textContent.trim().match(/^(\\d[\\d,]*)(%?)$/); if(!mm) return;
+      var target=parseInt(mm[1].replace(/,/g,''),10), suf=mm[2], t0=performance.now();
+      function tick(t){{ var p=Math.min(1,(t-t0)/600);
+        el.textContent=Math.round(p*target).toLocaleString()+suf;
+        if(p<1) requestAnimationFrame(tick); }}
+      requestAnimationFrame(tick);
+    }});
+  }}
 }})();
 </script>
 </body>
