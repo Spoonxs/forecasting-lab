@@ -38,6 +38,19 @@ fills and is expected to be far smaller.
 
 Reproduce: `python -c "from forecasting_lab.markets.leadlag import leadlag_skill_report; print(leadlag_skill_report())"` (and the `*_skill_report` in `signals.attention`, `signals.squeeze`, `eval.recalibration`). Pinned in `tests/test_edges.py`. Each feature is surfaced on the dashboard with its odds + the evidence (drivers) behind it.
 
+## The paper → live promotion gate (Phase 4) — refusing the reckless thing
+
+A strategy earns *consideration* for real money only by clearing **six**
+out-of-sample gates at once — deflated Sharpe > 1.0, PBO < 0.2, ≥ 20 real forward
+marks, Brier-skill-vs-market > 0, survives modeled costs + a turnover cap, and a
+risk gate (fractional-Kelly ≤ ¼, per-name / drawdown-kill-switch / no-leverage
+caps). The gate returns a signed, dated record with a written rationale and
+**places no trades**: it is a decision, not a broker. Property-tested — a skilled
+synthetic strategy is PROMOTED, an overfit/lucky one is REJECTED, and the module
+provably contains no order-execution code (`tests/test_promotion.py`). Today
+nothing clears it (no strategy has the real forward marks yet), which is the
+correct, honest answer: everything stays on paper.
+
 ## Ahead of the curve (Phase 3) — voices ranked by record, not followers
 
 Each tracked voice is scored two honest ways — **Brier-skill vs. the base rate**
