@@ -907,6 +907,7 @@ a,button,.kpi {{ transition:color .15s ease, border-color .15s ease, background 
     <span>Research briefing</span>
     <span>No. {issue}</span>
     <span>{sources_total:,} sources tracked</span>
+    <span><a href="agent.html" style="color:var(--accent);font-weight:700">&#9656; Live Agent Terminal</a></span>
     <span class="live" id="clock" data-gen="{_esc(state.generated)}">updated {_esc(state.generated)}</span>
   </div>
 </header>

@@ -28,6 +28,7 @@ class Pick:
     entry: float
     mark: float
     pnl: float         # stock: return; market: implied-prob move in the bet's favour
+    move: float        # the name's recent move (colour for the heatmap) — real market data
     thesis: str
     opened: str
 
@@ -72,8 +73,9 @@ def build_desk(movers: dict, market_edges: dict, as_of: str, *, ledger: AgentLed
             blotter.append(f"BUY {t} @ ${float(last):,.2f} — {why}")
         entry = float(led[key]["entry"])
         pnl = float(last) / entry - 1.0 if entry else 0.0
+        move = float(c.get("ret_5d", 0) or 0)  # recent move — real market data, colours the heatmap
         picks.append(Pick("stock", t, "long", round(pred.probability, 3), entry, float(last),
-                          round(pnl, 4), pred.label, led[key]["opened"]))
+                          round(pnl, 4), round(move, 4), pred.label, led[key]["opened"]))
 
     # --- paper bets on the live prediction markets ---
     live = (market_edges or {}).get("live") or {}
@@ -93,8 +95,9 @@ def build_desk(movers: dict, market_edges: dict, as_of: str, *, ledger: AgentLed
         entry = float(led[key]["entry"])
         side = led[key].get("side", side)
         pnl = (float(yes) - entry) if side == "YES" else (entry - float(yes))
+        edge = (fair - float(yes)) if side == "YES" else (float(yes) - fair)
         picks.append(Pick("market", ev, side, round(fair, 3), entry, float(yes),
-                          round(pnl, 4), f"fair {fair:.0%} vs entry {entry:.0%}", led[key]["opened"]))
+                          round(pnl, 4), round(edge, 4), f"fair {fair:.0%} vs entry {entry:.0%}", led[key]["opened"]))
 
     if ledger:
         ledger.save(led)

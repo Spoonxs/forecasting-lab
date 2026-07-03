@@ -29,6 +29,14 @@ def main(argv=None) -> int:
     state = collect_lab_state(seed=args.seed)
     out.write_text(render_dashboard(state), encoding="utf-8")
     print(f"Dashboard written to {out}")
+
+    # also render the dark, agentic Agent Terminal alongside it
+    from ..agent_trader.terminal import render_terminal
+
+    terminal = out.parent / "agent.html"
+    terminal.write_text(render_terminal(state), encoding="utf-8")
+    print(f"Agent terminal written to {terminal}")
+
     if args.open:
         webbrowser.open(out.as_uri())
     return 0
