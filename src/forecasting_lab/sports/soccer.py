@@ -133,6 +133,20 @@ def evaluate_rps(preds: pd.DataFrame) -> dict:
 
 _FOOTBALL_DATA = "https://www.football-data.co.uk/mmz4281/{season}/{div}.csv"
 
+# football-data.co.uk division codes we track (all free, same loader).
+SOCCER_LEAGUES: dict[str, str] = {
+    "E0": "England — Premier League",
+    "E1": "England — Championship",
+    "SC0": "Scotland — Premiership",
+    "D1": "Germany — Bundesliga",
+    "SP1": "Spain — La Liga",
+    "I1": "Italy — Serie A",
+    "F1": "France — Ligue 1",
+    "N1": "Netherlands — Eredivisie",
+    "P1": "Portugal — Primeira Liga",
+    "B1": "Belgium — Pro League",
+}
+
 
 def load_matches(season: str = "2324", div: str = "E0") -> pd.DataFrame:
     """Real match results from football-data.co.uk (free).

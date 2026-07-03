@@ -48,9 +48,32 @@ def source_groups(refresh: bool = False) -> list[SourceGroup]:
         SourceGroup("Media voices", "video+news", "live", n_voices,
                     "YouTube (RSS/yt-dlp) + Google News; key figures & outlets"),
         SourceGroup("Sports leagues", "results", "manual", 3, "ATP/WTA tennis, NBA (synthetic here)"),
+        SourceGroup("Soccer leagues", "results", "live", len(_soccer_leagues()),
+                    "football-data.co.uk divisions (EPL, Bundesliga, La Liga, Serie A, ...)"),
+        SourceGroup("Options chains (gamma)", "options", "live", 1,
+                    "Yahoo options endpoint; near-spot call-gamma concentration"),
+        SourceGroup("Short interest (FINRA)", "positioning", "blocked here", 1,
+                    "consolidated short interest %float + days-to-cover; needs API access"),
+        SourceGroup("X / Twitter voices", "social", "blocked here", _x_voice_count(),
+                    "curated finance handles; Nitter pull best-effort, list is the asset"),
         SourceGroup("Reddit subs", "sentiment", "blocked here", len(_REDDIT_SUBS),
                     "supported when reachable; 403 on this network"),
     ]
+
+
+def _soccer_leagues() -> dict:
+    from ..sports.soccer import SOCCER_LEAGUES
+
+    return SOCCER_LEAGUES
+
+
+def _x_voice_count() -> int:
+    try:
+        from .x_voices import voice_count
+
+        return voice_count()
+    except Exception:  # pragma: no cover
+        return 0
 
 
 # A static view for tests / quick reference (equity count from the bundled list).
