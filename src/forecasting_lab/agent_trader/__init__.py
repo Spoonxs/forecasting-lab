@@ -12,5 +12,7 @@ exposes. No LLM or broker code in this package's data layer.
 from __future__ import annotations
 
 from .brief import BriefSection, DailyBrief, build_brief, daily_brief, default_fetchers
+from .team import StrategyProposal, run_cycle
 
-__all__ = ["DailyBrief", "BriefSection", "build_brief", "daily_brief", "default_fetchers"]
+__all__ = ["DailyBrief", "BriefSection", "build_brief", "daily_brief", "default_fetchers",
+           "StrategyProposal", "run_cycle"]
