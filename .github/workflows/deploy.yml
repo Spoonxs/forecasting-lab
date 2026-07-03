@@ -1,0 +1,59 @@
+name: deploy-site
+
+# Fast Pages sync: on every push to master, rebuild the dashboard and deploy it — so
+# the public site never drifts from the code. NO full pipeline and NO alert (that's the
+# daily-lab job's job); this only re-renders site/index.html from committed state + the
+# synthetic/calibration panels and publishes. Live movers/odds data still refresh on the
+# full daily-lab run, where the cloud fetches happen.
+#
+# daily-lab's state commits carry "[skip ci]", so they don't retrigger this. Shares the
+# "pages" concurrency group with daily-lab / intraday-lab so deploys never overlap.
+
+on:
+  push:
+    branches: [master]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: Install
+        run: pip install -e ".[all]"
+
+      - name: Rebuild the dashboard
+        env:
+          SEC_USER_AGENT: ${{ secrets.SEC_USER_AGENT }}
+        run: python -m forecasting_lab.cli.dashboard
+
+      - name: Upload dashboard artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: site
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
