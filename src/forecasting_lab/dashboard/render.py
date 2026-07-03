@@ -15,6 +15,8 @@ from __future__ import annotations
 import html as _html
 from datetime import datetime
 
+from ..predictions import market_prediction, mover_prediction
+
 # ---------------------------------------------------------------- palette
 PAPER = "#FAF9F6"
 CARD = "#FFFFFF"
@@ -271,6 +273,31 @@ def _empty(note: str) -> str:
     return f'<p class="empty">{_esc(note)}</p>'
 
 
+# ---------------------------------------------------------------- evidence ("why")
+def _dfmt(feature: str, value: float) -> str:
+    """Format a driver value by what the feature is (× for volume, % for the rest)."""
+    if "volume" in feature:
+        return f"{value:,.0f}×" if abs(value) >= 100 else f"{value:.2f}×"
+    if "composite" in feature:
+        return f"{value:+.2f}"
+    return _pct(value, 1, signed=True)
+
+
+def _why(pred) -> str:
+    """The odds + an expandable rationale — the design.md §7 contract, one element."""
+    items = "".join(
+        f'<li><span>{_esc(d.feature)}</span><b>{_dfmt(d.feature, d.value)}</b></li>'
+        for d in pred.drivers[:5]
+    )
+    edge = pred.edge_vs_market
+    if edge is not None and abs(edge) > 0.001:
+        items += f'<li class="edge"><span>edge vs market</span><b>{_pct(edge,1,signed=True)}</b></li>'
+    unit = "yes" if pred.kind == "market" else "lean"
+    return (f'<details class="why"><summary><b>{pred.pct()}</b> {unit} · why</summary>'
+            f'<ul class="drivers">{items}</ul>'
+            f'<p class="cav">{_esc(pred.caveat)}</p></details>')
+
+
 # ---------------------------------------------------------------- movers board
 def _mover_card(c: dict) -> str:
     last = c.get("last")
@@ -279,6 +306,7 @@ def _mover_card(c: dict) -> str:
     heads = _esc(c.get("headline", "")) if c.get("headline") else ""
     news = f'<p class="mv-news">{heads}</p>' if heads else ""
     frac = max(0.0, min(1.0, (score + 2) / 4))
+    pred = mover_prediction(c)
     return (
         f'<article class="mover">'
         f'<div class="mv-top"><span class="tk">{_esc(c["ticker"])}</span><span class="px">{price}</span></div>'
@@ -286,7 +314,7 @@ def _mover_card(c: dict) -> str:
         f'<div class="chips">{_chip("5d", c.get("ret_5d",0))}{_chip("60d", c.get("ret_60d",0))}'
         f'<span class="chip flat">{_pct(c.get("pct_from_high",0),0,signed=True)} <em>vs high</em></span></div>'
         f'<div class="mv-score"><span>signal</span>{_bar(frac, STRATEGY_COLORS["momentum_60d"])}'
-        f'<b>{_signed(score)}</b></div>{news}</article>'
+        f'<b>{_signed(score)}</b></div>{_why(pred)}{news}</article>'
     )
 
 
@@ -309,20 +337,22 @@ def _movers_board(movers: dict) -> str:
 
 # ---------------------------------------------------------------- odds board
 def _odds_card(event, k, p, similarity, footer) -> str:
+    pred = market_prediction(event, p, "Polymarket", gap=abs(float(k) - float(p)), similarity=similarity)
     return (
         f'<div class="odds">'
         f'<div class="odds-q">{_esc(event)}<span class="sim">match {_pct(similarity,0)}</span></div>'
         f'<div class="odds-bars">'
         f'<div class="ob"><label>Kalshi</label>{_bar(k, "#2F6690")}<span>{_pct(k,0)}</span></div>'
         f'<div class="ob"><label>Polymarket</label>{_bar(p, ACCENT)}<span>{_pct(p,0)}</span></div></div>'
-        f'<div class="odds-edge">{footer}</div></div>'
+        f'<div class="odds-edge">{footer}</div>{_why(pred)}</div>'
     )
 
 
 def _odds_row(event, yes, venue, color) -> str:
+    pred = market_prediction(event, yes, venue)
     return (f'<div class="odds1"><div class="o1-q">{_esc(event)}</div>'
             f'<div class="ob">{_bar(yes, color)}<span>{_pct(yes,0)} yes</span></div>'
-            f'<div class="o1-v">{_esc(venue)}</div></div>')
+            f'<div class="o1-v">{_esc(venue)}</div>{_why(pred)}</div>')
 
 
 def _odds_board(edges: dict) -> str:
@@ -658,12 +688,29 @@ a.kpi:hover {{ background:#fdfcf9; }}
 .odds-edge b {{ color:var(--accent); font-family:var(--mono); }}
 .ocols {{ display:grid; grid-template-columns:1fr 1fr; gap:14px 30px; }}
 .ocol h3 {{ margin-top:6px; }}
-.odds1 {{ display:flex; align-items:center; gap:12px; padding:9px 0; border-bottom:1px solid var(--rule); }}
+.odds1 {{ display:flex; flex-wrap:wrap; align-items:center; gap:6px 12px; padding:9px 0; border-bottom:1px solid var(--rule); }}
 .odds1:last-child {{ border-bottom:0; }}
 .o1-q {{ flex:1 1 auto; font:400 14px/1.35 var(--serif); }}
 .odds1 .ob {{ flex:0 0 128px; }}
 .odds1 .ob .ibar {{ height:8px; }}
 .o1-v {{ display:none; }}
+.odds1 .why {{ flex-basis:100%; }}
+
+/* evidence expander: odds in the summary, drivers + caveat on open */
+.why {{ margin-top:9px; }}
+.why > summary {{ list-style:none; cursor:pointer; font:600 12px/1 var(--sans); color:var(--muted);
+  text-transform:uppercase; letter-spacing:.04em; padding:5px 0; }}
+.why > summary::-webkit-details-marker {{ display:none; }}
+.why > summary::after {{ content:" ▾"; color:var(--faint); }}
+.why[open] > summary::after {{ content:" ▴"; }}
+.why > summary b {{ font-family:var(--mono); color:var(--accent); font-size:13px; }}
+.drivers {{ list-style:none; margin:6px 0 0; border-top:1px solid var(--rule); }}
+.drivers li {{ display:flex; justify-content:space-between; gap:10px; padding:5px 0;
+  border-bottom:1px solid var(--rule); font:400 12.5px/1.3 var(--serif); }}
+.drivers li span {{ color:var(--muted); }}
+.drivers li b {{ font-family:var(--mono); font-weight:600; }}
+.drivers li.edge b {{ color:var(--accent); }}
+.why .cav {{ font:italic 11.5px/1.4 var(--serif); color:var(--faint); margin-top:8px; }}
 
 .chart svg, .chart.wide svg {{ width:100%; height:auto; display:block; }}
 .split {{ display:grid; grid-template-columns:1.25fr 1fr; gap:26px; align-items:center; }}

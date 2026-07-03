@@ -124,6 +124,11 @@ def test_render_dashboard_is_an_interactive_visual_tool():
     assert "Will X happen?" in html
     # the ML model is surfaced against the rules
     assert "ML model" in html and "ranks #2" in html
+    # Phase 0 evidence contract: every pick shows odds + an expandable "why"
+    assert 'class="why"' in html  # the evidence expander
+    assert "· why" in html  # summary carries the odds + a "why" toggle
+    assert "trend composite" in html  # a named driver on the mover pick
+    assert "market&#x27;s own price" in html  # the market pick's honest caveat (apostrophe escaped)
     # plain-English section titles (apostrophes are HTML-escaped in titles)
     assert "moving now" in html
     assert "Strategy leaderboard" in html
