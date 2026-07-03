@@ -34,6 +34,7 @@ class LabState:
     market_edges: dict = field(default_factory=dict)  # structured cross-venue odds pairs
     edge_features: dict = field(default_factory=dict)  # Phase-1 edge features + their OOS skill
     voices: dict = field(default_factory=dict)  # Phase-3 "ahead of the curve" voice leaderboard
+    agent: dict = field(default_factory=dict)  # the agent desk: paper picks/bets on real data
 
 
 def _fit_tennis(seed: int = 0) -> dict:
@@ -221,7 +222,18 @@ def collect_lab_state(seed: int = 0) -> LabState:
     state.market_edges = read_latest_data("market-divergence") or {"empty": True}
     state.edge_features = _edge_features()
     state.voices = _voice_leaderboard(state.generated)
+    state.agent = _agent_desk(state)
     return state
+
+
+def _agent_desk(state) -> dict:
+    """The agent's paper book: stock picks from the live movers + bets on the live odds."""
+    try:
+        from ..agent_trader.desk import AgentLedger, build_desk
+
+        return build_desk(state.movers, state.market_edges, state.generated, ledger=AgentLedger())
+    except Exception:  # pragma: no cover - defensive
+        return {}
 
 
 def _voice_leaderboard(generated: str) -> dict:

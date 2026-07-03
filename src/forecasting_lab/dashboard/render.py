@@ -469,6 +469,38 @@ def render_dashboard(state) -> str:
     now_body = _movers_board(state.movers)
     odds_body = _odds_board(state.market_edges)
 
+    # ---- agent desk (paper book on real data) ----
+    ag = state.agent
+    if not ag or not ag.get("picks"):
+        agent_body = _empty("The agent hasn't opened any paper positions yet — it acts on the next data scan "
+                            "(needs the live movers + odds feed).")
+    else:
+        ret = ag.get("return", 0.0)
+        head = (
+            '<div class="deskstat">'
+            f'<div><span>Paper equity</span><b>${ag["equity"]:,.0f}</b></div>'
+            f'<div><span>Stock book return</span><b class="{"up" if ret >= 0 else "down"}">{_pct(ret,2,signed=True)}</b></div>'
+            f'<div><span>Open</span><b>{ag["n_stocks"]} stocks · {ag["n_markets"]} market bets</b></div>'
+            '</div>'
+        )
+        blot = "".join(f"<li>{_esc(b)}</li>" for b in ag.get("blotter", []))
+        blotter = f'<h3>Trade blotter</h3><ul class="blotter">{blot}</ul>' if blot else ""
+        prows = []
+        for p in ag["picks"]:
+            stock = p["kind"] == "stock"
+            entry = f'${p["entry"]:,.2f}' if stock else _pct(p["entry"], 0)
+            now = f'${p["mark"]:,.2f}' if stock else _pct(p["mark"], 0)
+            cls = "up" if p["pnl"] >= 0 else "down"
+            prows.append(
+                f'<tr><td>{_esc(p["name"])}</td><td>{_esc(p["side"])}</td>'
+                f'<td class="num">{entry}</td><td class="num">{now}</td>'
+                f'<td class="num {cls}">{_pct(p["pnl"],1,signed=True)}</td><td>{_esc(p["thesis"])}</td></tr>'
+            )
+        table = ('<div class="twrap"><table><thead><tr><th>position</th><th>side</th>'
+                 '<th class="num">entry</th><th class="num">now</th><th class="num">P&amp;L</th><th>why</th>'
+                 f'</tr></thead><tbody>{"".join(prows)}</tbody></table></div>')
+        agent_body = head + blotter + table
+
     if ar.get("empty"):
         arena_body = _empty("The strategy race hasn't run yet. Locally: flab-sim run --bars 250.")
     else:
@@ -624,7 +656,7 @@ def render_dashboard(state) -> str:
 
     nav = "".join(
         f'<a href="#{a}">{lbl}</a>' for a, lbl in [
-            ("now", "Now"), ("markets", "Markets"), ("strategies", "Strategies"),
+            ("agent", "Agent desk"), ("now", "Now"), ("markets", "Markets"), ("strategies", "Strategies"),
             ("edges", "Edges"), ("voices", "Voices"), ("trust", "Sports"), ("economy", "Economy"), ("record", "Track record"),
         ]
     )
@@ -815,6 +847,12 @@ tr.hl td {{ background:#faf4ee; }}
 .fine {{ font:400 13px/1.5 var(--serif); color:var(--muted); margin-top:13px; max-width:72ch; }}
 .empty {{ color:var(--muted); font:400 15px/1.5 var(--serif); background:#fbfaf7; border:1px dashed var(--rule); border-radius:3px; padding:16px; }}
 
+.deskstat {{ display:flex; gap:30px; flex-wrap:wrap; margin-bottom:16px; }}
+.deskstat span {{ display:block; font:600 11px/1 var(--sans); letter-spacing:.05em; text-transform:uppercase; color:var(--muted); margin-bottom:5px; }}
+.deskstat b {{ font:700 27px/1.05 var(--display); }}
+.blotter {{ list-style:none; font:400 13px/1.6 var(--mono); border-top:1px solid var(--rule); margin:6px 0 18px; }}
+.blotter li {{ padding:7px 0; border-bottom:1px solid var(--rule); }}
+.blotter li:last-child {{ border-bottom:0; }}
 .gauge {{ margin:2px 0 18px; }}
 .gbar {{ height:14px; border-radius:2px; background:linear-gradient(90deg,#e8f1ef,#f3ead6,#f2dad2); position:relative; overflow:hidden; }}
 .gbar i {{ position:absolute; top:0; bottom:0; left:0; border-right:3px solid var(--ink); }}
@@ -882,6 +920,8 @@ a,button,.kpi {{ transition:color .15s ease, border-color .15s ease, background 
 <div class="kpis">{glance}</div>
 
 <nav>{nav}</nav>
+
+{_section("agent", "Live · Paper", "The agent desk", "What the agent is actually doing right now: a paper book on live data. It buys the top trending stocks and takes YES/NO positions on the most-traded Kalshi/Polymarket markets by its recalibrated fair value, marks them to the current data, and logs every trade. Real data and real (paper) marks that accrue over runs — not real money.", agent_body, "paper account")}
 
 {_section("now", "Markets · Movers", "What's moving now", "Today's trending stocks, scored two ways: steady climbers (NVIDIA-shape trends) and fast money (GameStop-shape squeezes). Each card shows the recent price line, how far it's moved, and a signal score. Attention, not advice.", now_body, "Yahoo + Google News")}
 
