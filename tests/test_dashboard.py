@@ -44,8 +44,8 @@ def test_sparkline_colors_by_net_move():
     up = sparkline_svg([1.0, 1.1, 1.3])
     down = sparkline_svg([1.3, 1.1, 1.0])
     assert up.startswith("<svg") and "role=\"img\"" in up
-    assert "#12855A" in up  # green line when it rose
-    assert "#C24436" in down  # red line when it fell
+    assert "#0B6B3A" in up  # green line when it rose
+    assert "#B0281A" in down  # red line when it fell
     assert sparkline_svg([1.0]).endswith("</svg>")  # too-short series doesn't crash
 
 
@@ -109,8 +109,10 @@ def test_render_dashboard_is_an_interactive_visual_tool():
     html = render_dashboard(_minimal_state())
     assert html.startswith("<!DOCTYPE html>")
     # honest framing stays front and centre
-    assert "not financial advice" in html
+    assert "financial advice" in html
     assert "Is it actually making money?" in html
+    # editorial masthead: dateline + issue number
+    assert "The Forecasting Briefing" in html and "No. " in html
     # it's a tool: nav, tabs, sortable tables, live clock
     assert "<nav>" in html
     assert 'class="sortable"' in html and "th[data-sort]" in html  # click-to-sort wired

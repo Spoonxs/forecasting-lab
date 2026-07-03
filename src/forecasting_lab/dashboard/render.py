@@ -1,38 +1,42 @@
-"""Render the lab state into one interactive, self-explaining HTML page.
+"""Render the lab state into one interactive HTML page — an editorial briefing.
 
-Design goal: a *tool*, not a report. A sticky section nav; a "what's moving now"
-board with real price sparklines and % moves; prediction-market odds shown
-side-by-side with the gap; sortable strategy/odds tables with inline bars; the ML
-model surfaced against the fixed rules. Plain-English titles, jargon translated.
-Light theme, one teal accent, green/red only for gains/losses. Hand-rolled SVG +
-a little vanilla JS (sort, tabs, scroll-spy, "updated N ago"). Self-contained,
-system fonts — always renders. Content is never JS-gated.
+Design: a research *newspaper*, not a SaaS dashboard. Warm off-white paper, a
+serif body/headline (Charter/Georgia — system fonts, always render), sans for
+labels/nav, mono for figures/dates/tickers. A masthead with a spelled-out
+dateline + issue number; kickers over every section; hairline rules instead of
+shadows; tabular figures and real U+2212 minus signs. Still a *tool* underneath:
+sticky section nav, a "what's moving now" board with price sparklines, live
+prediction-market odds side by side, sortable tables, an "updated N ago" clock.
+Self-contained (inline CSS/SVG + a little vanilla JS); content never JS-gated.
 """
 
 from __future__ import annotations
 
 import html as _html
+from datetime import datetime
 
 # ---------------------------------------------------------------- palette
-PAPER = "#F3F4F6"
+PAPER = "#FAF9F6"
 CARD = "#FFFFFF"
-INK = "#161A21"
-MUTED = "#5A626E"
-FAINT = "#8A909B"
-LINE = "#E5E8ED"
-ACCENT = "#0E7C6B"
-ACCENT_SOFT = "#E6F1EF"
-UP = "#12855A"
-DOWN = "#C24436"
+INK = "#1E1C19"
+MUTED = "#6B6864"
+FAINT = "#9A958C"
+RULE = "#E5E1D8"
+LINE = RULE  # alias
+ACCENT = "#0F766E"
+ACCENT_SOFT = "#EAF1EF"
+UP = "#0B6B3A"
+DOWN = "#B0281A"
+MINUS = "−"
 
 STRATEGY_COLORS = {
-    "ml_ranker": "#B4531E",
+    "ml_ranker": "#A6511C",
     "momentum_60d": ACCENT,
-    "breakout_120d": "#3E7CB1",
-    "meanrev_5d": "#C98A3B",
-    "voltarget_20d": "#7A6BB0",
-    "buy_hold": "#8A909B",
-    "random": "#B9BEC7",
+    "breakout_120d": "#2F6690",
+    "meanrev_5d": "#B0791F",
+    "voltarget_20d": "#6A5A94",
+    "buy_hold": "#8A857C",
+    "random": "#B8B2A6",
 }
 BASELINES = {"buy_hold", "random"}
 
@@ -60,10 +64,17 @@ def _fmt(v, digits=3):
 
 def _pct(v, digits=0, signed=False):
     try:
-        s = "+" if signed and float(v) >= 0 else ""
-        return f"{s}{float(v) * 100:.{digits}f}%"
+        f = float(v)
     except (TypeError, ValueError):
         return _esc(v)
+    body = f"{abs(f) * 100:.{digits}f}%"
+    if f < 0:
+        return MINUS + body
+    return ("+" if signed else "") + body
+
+
+def _signed(f: float, digits=2) -> str:
+    return (MINUS if f < 0 else "+") + f"{abs(f):.{digits}f}"
 
 
 def _plain(name: str) -> str:
@@ -90,7 +101,7 @@ def sparkline_svg(series: list[float], width=150, height=40) -> str:
     return (
         f'<svg viewBox="0 0 {width} {height}" class="spark" preserveAspectRatio="none" '
         f'role="img" aria-label="price trend">'
-        f'<path d="{area}" fill="{color}" fill-opacity="0.08"/>'
+        f'<path d="{area}" fill="{color}" fill-opacity="0.07"/>'
         f'<path d="{line}" fill="none" stroke="{color}" stroke-width="1.6"/>'
         f'<circle cx="{coords[-1][0]:.1f}" cy="{coords[-1][1]:.1f}" r="2.2" fill="{color}"/></svg>'
     )
@@ -114,8 +125,8 @@ def reliability_svg(records: list[dict], width=620, height=420) -> str:
     ]
     for i in range(6):
         p = i / 5
-        parts.append(f'<line x1="{sx(p):.1f}" y1="{sy(0):.1f}" x2="{sx(p):.1f}" y2="{sy(1):.1f}" stroke="{LINE}"/>')
-        parts.append(f'<line x1="{sx(0):.1f}" y1="{sy(p):.1f}" x2="{sx(1):.1f}" y2="{sy(p):.1f}" stroke="{LINE}"/>')
+        parts.append(f'<line x1="{sx(p):.1f}" y1="{sy(0):.1f}" x2="{sx(p):.1f}" y2="{sy(1):.1f}" stroke="{RULE}"/>')
+        parts.append(f'<line x1="{sx(0):.1f}" y1="{sy(p):.1f}" x2="{sx(1):.1f}" y2="{sy(p):.1f}" stroke="{RULE}"/>')
         parts.append(f'<text x="{sx(p):.1f}" y="{sy(0)+18:.1f}" class="ax" text-anchor="middle">{p:.0%}</text>')
         parts.append(f'<text x="{ml-10:.1f}" y="{sy(p)+4:.1f}" class="ax" text-anchor="end">{p:.0%}</text>')
 
@@ -159,10 +170,10 @@ def reliability_svg(records: list[dict], width=620, height=420) -> str:
 
 
 # ---------------------------------------------------------------- SVG: equity
-def equity_svg(curves: dict[str, list[float]], width=760, height=300) -> str:
+def equity_svg(curves: dict[str, list[float]], width=780, height=300) -> str:
     import math
 
-    ml, mr, mt, mb = 52, 176, 14, 26
+    ml, mr, mt, mb = 52, 188, 14, 26
     pw, ph = width - ml - mr, height - mt - mb
     if not curves:
         return ""
@@ -182,7 +193,7 @@ def equity_svg(curves: dict[str, list[float]], width=760, height=300) -> str:
     parts = [f'<svg viewBox="0 0 {width} {height}" role="img" aria-label="Growth of $1 by strategy (log scale)">']
     for t in ticks:
         y = sy(t)
-        parts.append(f'<line x1="{ml}" y1="{y:.1f}" x2="{ml+pw}" y2="{y:.1f}" stroke="{LINE}" stroke-width="{1.6 if t==1 else 1}"/>')
+        parts.append(f'<line x1="{ml}" y1="{y:.1f}" x2="{ml+pw}" y2="{y:.1f}" stroke="{RULE}" stroke-width="{1.6 if t==1 else 1}"/>')
         parts.append(f'<text x="{ml-8}" y="{y+4:.1f}" class="ax" text-anchor="end">{t:g}&#215;</text>')
     order = sorted(curves, key=lambda k: curves[k][-1], reverse=True)
     for idx, name in enumerate(order):
@@ -218,9 +229,11 @@ def _kpi(label: str, value: str, sub: str, tone: str = "", anchor: str = "") -> 
             f'<div class="kpi-val">{value}</div><div class="kpi-sub">{_esc(sub)}</div></{tag}>')
 
 
-def _section(anchor: str, title: str, explainer: str, body: str, source: str = "") -> str:
+def _section(anchor: str, kicker: str, title: str, explainer: str, body: str, source: str = "") -> str:
     src = f'<span class="src">{_esc(source)}</span>' if source else ""
-    return (f'<section id="{anchor}" class="card reveal"><div class="sec-head"><h2>{_esc(title)}</h2>{src}</div>'
+    return (f'<section id="{anchor}" class="card reveal">'
+            f'<div class="sec-head"><div><div class="kicker">{_esc(kicker)}</div>'
+            f'<h2>{_esc(title)}</h2></div>{src}</div>'
             f'<p class="explain">{_esc(explainer)}</p>{body}</section>')
 
 
@@ -271,7 +284,7 @@ def _mover_card(c: dict) -> str:
         f'<div class="chips">{_chip("5d", c.get("ret_5d",0))}{_chip("60d", c.get("ret_60d",0))}'
         f'<span class="chip flat">{_pct(c.get("pct_from_high",0),0,signed=True)} <em>vs high</em></span></div>'
         f'<div class="mv-score"><span>signal</span>{_bar(frac, STRATEGY_COLORS["momentum_60d"])}'
-        f'<b>{score:+.2f}</b></div>{news}</article>'
+        f'<b>{_signed(score)}</b></div>{news}</article>'
     )
 
 
@@ -298,7 +311,7 @@ def _odds_card(event, k, p, similarity, footer) -> str:
         f'<div class="odds">'
         f'<div class="odds-q">{_esc(event)}<span class="sim">match {_pct(similarity,0)}</span></div>'
         f'<div class="odds-bars">'
-        f'<div class="ob"><label>Kalshi</label>{_bar(k, "#3E7CB1")}<span>{_pct(k,0)}</span></div>'
+        f'<div class="ob"><label>Kalshi</label>{_bar(k, "#2F6690")}<span>{_pct(k,0)}</span></div>'
         f'<div class="ob"><label>Polymarket</label>{_bar(p, ACCENT)}<span>{_pct(p,0)}</span></div></div>'
         f'<div class="odds-edge">{footer}</div></div>'
     )
@@ -315,7 +328,6 @@ def _odds_board(edges: dict) -> str:
     matched = edges.get("matched") or []
     live = edges.get("live") or {}
 
-    # 1) cross-venue gaps (if any cleared fees), or the closest-matched pairs
     cross = ""
     if flagged:
         cards = []
@@ -333,7 +345,6 @@ def _odds_board(edges: dict) -> str:
         cross = ('<h3>Same question, both venues</h3>'
                  '<div class="oddswrap">' + "".join(cards) + "</div>")
 
-    # 2) most-traded live odds from each venue (always shown when available)
     live_html = ""
     poly, kalshi = live.get("poly") or [], live.get("kalshi") or []
     if poly or kalshi:
@@ -342,7 +353,7 @@ def _odds_board(edges: dict) -> str:
             rows = "".join(_odds_row(m["event"], m["yes"], "Polymarket", ACCENT) for m in poly[:8])
             cols.append(f'<div class="ocol"><h3>Polymarket · most traded</h3>{rows}</div>')
         if kalshi:
-            rows = "".join(_odds_row(m["event"], m["yes"], "Kalshi", "#3E7CB1") for m in kalshi[:8])
+            rows = "".join(_odds_row(m["event"], m["yes"], "Kalshi", "#2F6690") for m in kalshi[:8])
             cols.append(f'<div class="ocol"><h3>Kalshi · most active</h3>{rows}</div>')
         live_html = '<div class="ocols">' + "".join(cols) + "</div>"
 
@@ -356,9 +367,8 @@ def _odds_board(edges: dict) -> str:
 
 # ---------------------------------------------------------------- sortable table
 def _sortable(rows: list[dict], cols: list[tuple], *, bar_col=None, bar_max=1.0, highlight=None) -> str:
-    """cols: list of (key, label, type) where type in {name,text,num,pct,signed,int}."""
     head = "".join(
-        f'<th data-sort="{i}" class="{"num" if typ != "name" and typ != "text" else ""}">{_esc(lbl)}<i></i></th>'
+        f'<th data-sort="{i}" class="{"num" if typ not in ("name", "text") else ""}">{_esc(lbl)}<i></i></th>'
         for i, (key, lbl, typ) in enumerate(cols)
     )
     body = []
@@ -374,7 +384,7 @@ def _sortable(rows: list[dict], cols: list[tuple], *, bar_col=None, bar_max=1.0,
                 fv = float(v)
                 c = "up" if fv >= 0 else "down"
                 barhtml = _bar(abs(fv) / bar_max, UP if fv >= 0 else DOWN) if key == bar_col else ""
-                tds.append(f'<td class="num {c}" data-v="{fv}">{barhtml}<span>{fv:+.2f}</span></td>')
+                tds.append(f'<td class="num {c}" data-v="{fv}">{barhtml}<span>{_signed(fv)}</span></td>')
             elif typ == "pct":
                 fv = float(v)
                 tds.append(f'<td class="num" data-v="{fv}">{_pct(fv,0)}</td>')
@@ -395,6 +405,14 @@ def render_dashboard(state) -> str:
     calib = "Well-calibrated" if t["ece"] < 0.04 else "Roughly calibrated"
     ar = state.arena
     mc = state.macro
+
+    # dateline + issue number from the run timestamp (data, not wall-clock)
+    try:
+        dt = datetime.strptime(str(state.generated)[:16], "%Y-%m-%d %H:%M")
+        dateline = f"{dt.strftime('%A')}, {dt.strftime('%B')} {dt.day}, {dt.year}"
+        issue = dt.timetuple().tm_yday
+    except (ValueError, TypeError):
+        dateline, issue = _esc(state.generated), 1
 
     leader = "—"
     ml_rank = None
@@ -417,7 +435,6 @@ def render_dashboard(state) -> str:
     now_body = _movers_board(state.movers)
     odds_body = _odds_board(state.market_edges)
 
-    # arena
     if ar.get("empty"):
         arena_body = _empty("The strategy race hasn't run yet. Locally: flab-sim run --bars 250.")
     else:
@@ -442,7 +459,6 @@ def render_dashboard(state) -> str:
             f'The dashed lines are the two controls a real strategy must beat.</div>'
         )
 
-    # forward
     fw = state.forward
     if fw.get("empty"):
         forward_body = _empty("The live study hasn’t started collecting real results yet.")
@@ -455,7 +471,6 @@ def render_dashboard(state) -> str:
         forward_body += ('<p class="fine">' + (f"Real, out-of-sample results accruing since {_esc(live)}."
                          if live else "Genuine day-by-day results start on the next scheduled run.") + "</p>")
 
-    # strategy cards
     stat_by = {r["strategy"]: r for r in ar["leaderboard"]} if not ar.get("empty") else {}
     cards = []
     for c in state.strategies:
@@ -469,7 +484,6 @@ def render_dashboard(state) -> str:
         )
     strategies_extra = '<h3>How each one works</h3><div class="scards">' + "".join(cards) + "</div>"
 
-    # sports
     nba, sc = state.nba["summary"], state.soccer["eval"]
     base_brier = t["base_rate"] * (1 - t["base_rate"])
     sports_body = (
@@ -487,7 +501,6 @@ def render_dashboard(state) -> str:
         ]) + "</div>"
     )
 
-    # economy
     if mc.get("empty"):
         macro_body = _empty("The economy check needs the live FRED feed.")
     else:
@@ -504,7 +517,6 @@ def render_dashboard(state) -> str:
                 rows.append(_stat(label, _fmt(v["value"], 2)))
         macro_body = gauge + "".join(rows) + f'<p class="fine">A probability, not a certainty. Yield-curve model, live data as of {_esc(ts["date"])}.</p>'
 
-    # track record
     fl = state.forecast_log
     if fl.get("empty"):
         track_body = _empty("No forecasts have been logged and resolved yet. Once real predictions are recorded and "
@@ -520,7 +532,6 @@ def render_dashboard(state) -> str:
                               f"right more often than the price {beat['beat_rate']:.0%} of the time"))
         track_body = "".join(rows)
 
-    # media (compact)
     media = state.digests.get("media-watch", {"empty": True})
     media_body = ""
     if not media.get("empty"):
@@ -535,7 +546,7 @@ def render_dashboard(state) -> str:
         ]
     )
 
-    media_section = _section("media", "What the news and voices are saying",
+    media_section = _section("media", "Media watch", "What the news and voices are saying",
                              "About 100 outlets and commentators, scanned for which companies and themes they're naming today.",
                              media_body) if media_body else ""
 
@@ -545,215 +556,246 @@ def render_dashboard(state) -> str:
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta http-equiv="refresh" content="1800">
-<title>Forecasting Lab</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='4' fill='%230F766E'/%3E%3Cpath d='M6 22 L13 15 L18 19 L26 9' fill='none' stroke='white' stroke-width='3' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E">
+<title>The Forecasting Briefing</title>
 <script>document.documentElement.className="js";</script>
 <style>
 :root {{
   --paper:{PAPER}; --card:{CARD}; --ink:{INK}; --muted:{MUTED}; --faint:{FAINT};
-  --line:{LINE}; --accent:{ACCENT}; --accent-soft:{ACCENT_SOFT}; --up:{UP}; --down:{DOWN};
-  --sans:ui-sans-serif,-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
-  --mono:ui-monospace,"SFMono-Regular","Cascadia Code",Consolas,monospace;
+  --rule:{RULE}; --accent:{ACCENT}; --accent-soft:{ACCENT_SOFT}; --up:{UP}; --down:{DOWN};
+  --serif:Charter,"Bitstream Charter","Sitka Text",Cambria,Georgia,serif;
+  --display:"Iowan Old Style","Palatino Linotype",Palatino,P052,Georgia,serif;
+  --sans:Inter,system-ui,-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+  --mono:ui-monospace,"SFMono-Regular","Cascadia Code",Menlo,Consolas,monospace;
 }}
 * {{ box-sizing:border-box; margin:0; }}
-body {{ background:var(--paper); color:var(--ink); font:16px/1.6 var(--sans);
-  -webkit-font-smoothing:antialiased; font-variant-numeric:tabular-nums; }}
-.wrap {{ max-width:1120px; margin:0 auto; padding:0 20px 72px; }}
+body {{ background:var(--paper); color:var(--ink); font:400 17px/1.6 var(--serif);
+  -webkit-font-smoothing:antialiased; font-variant-numeric:oldstyle-nums; }}
+.wrap {{ max-width:1120px; margin:0 auto; padding:0 22px 80px; }}
 a {{ color:var(--accent); text-decoration:none; }}
-:focus-visible {{ outline:2px solid var(--accent); outline-offset:2px; border-radius:3px; }}
+:focus-visible {{ outline:2px solid var(--accent); outline-offset:2px; }}
 
-header {{ padding:40px 0 20px; }}
-.eyebrow {{ font:600 12px/1 var(--sans); letter-spacing:.14em; text-transform:uppercase; color:var(--accent); }}
-header h1 {{ font:700 clamp(28px,4.4vw,42px)/1.05 var(--sans); letter-spacing:-.02em; margin:10px 0 8px; }}
-header p {{ font-size:16.5px; color:var(--muted); max-width:60ch; }}
-.meta {{ display:flex; flex-wrap:wrap; gap:8px 10px; margin-top:15px; align-items:center; }}
-.tag {{ font:500 12.5px/1 var(--sans); color:var(--muted); background:var(--card);
-  border:1px solid var(--line); padding:7px 11px; border-radius:999px; }}
-.tag.warn {{ color:#8a5a12; background:#fbf3e3; border-color:#f0dfbf; }}
-.tag.live {{ color:var(--up); }}
-.tag.live::before {{ content:""; display:inline-block; width:7px; height:7px; border-radius:50%;
-  background:var(--up); margin-right:6px; vertical-align:middle; }}
+/* ---- masthead ---- */
+.masthead {{ text-align:center; padding:30px 0 0; }}
+.wordmark {{ font:700 clamp(30px,5vw,48px)/1 var(--display); letter-spacing:.01em; }}
+.subword {{ font:400 14px/1.4 var(--serif); color:var(--muted); font-style:italic; margin-top:8px; }}
+.dateline {{ font:600 11px/1 var(--mono); letter-spacing:.07em; color:var(--muted);
+  font-variant-caps:all-small-caps; text-transform:lowercase;
+  border-top:1px solid var(--rule); border-bottom:3px solid var(--ink);
+  margin-top:16px; padding:9px 0; display:flex; flex-wrap:wrap; gap:6px 18px; justify-content:center; }}
+.dateline .live::before {{ content:""; display:inline-block; width:6px; height:6px; border-radius:50%;
+  background:var(--up); margin-right:5px; vertical-align:middle; }}
 
-nav {{ position:sticky; top:0; z-index:20; background:rgba(243,244,246,.86);
-  backdrop-filter:blur(8px); border-bottom:1px solid var(--line); margin:0 -20px 18px;
-  padding:0 20px; display:flex; gap:4px; overflow-x:auto; }}
-nav a {{ padding:13px 12px; font:600 14px/1 var(--sans); color:var(--muted); white-space:nowrap;
-  border-bottom:2px solid transparent; }}
+/* ---- lead ---- */
+.lead {{ padding:34px 0 8px; }}
+.kicker {{ font:600 12px/1 var(--sans); letter-spacing:.11em; text-transform:uppercase; color:var(--accent); margin-bottom:9px; }}
+.lead h1 {{ font:700 clamp(30px,5.2vw,52px)/1.04 var(--display); letter-spacing:-.015em; text-wrap:balance; }}
+.lead .deck {{ font:400 19px/1.5 var(--serif); color:var(--muted); max-width:44ch; margin-top:12px; }}
+
+nav {{ position:sticky; top:0; z-index:20; background:rgba(250,249,246,.9);
+  backdrop-filter:blur(6px); border-bottom:1px solid var(--rule); margin:22px -22px 20px;
+  padding:0 22px; display:flex; gap:2px; overflow-x:auto; }}
+nav a {{ padding:12px 13px; font:600 12px/1 var(--sans); letter-spacing:.04em; text-transform:uppercase;
+  color:var(--muted); white-space:nowrap; border-bottom:2px solid transparent; }}
 nav a:hover {{ color:var(--ink); }}
 nav a.active {{ color:var(--accent); border-bottom-color:var(--accent); }}
 
-.kpis {{ display:grid; grid-template-columns:repeat(4,1fr); gap:12px; margin:0 0 18px; }}
-.kpi {{ background:var(--card); border:1px solid var(--line); border-radius:14px; padding:16px; display:block; color:inherit; }}
-a.kpi:hover {{ border-color:var(--accent); }}
-.kpi-label {{ font:600 11.5px/1.2 var(--sans); letter-spacing:.05em; text-transform:uppercase; color:var(--muted); }}
-.kpi-val {{ font:700 25px/1.15 var(--sans); letter-spacing:-.01em; margin:7px 0 2px; }}
+.kpis {{ display:grid; grid-template-columns:repeat(4,1fr); margin:0 0 6px; border:1px solid var(--rule); border-radius:3px; overflow:hidden; }}
+.kpi {{ padding:16px 18px; border-right:1px solid var(--rule); display:block; color:inherit; background:var(--card); }}
+.kpi:last-child {{ border-right:0; }}
+a.kpi:hover {{ background:#fdfcf9; }}
+.kpi-label {{ font:600 11px/1.2 var(--sans); letter-spacing:.06em; text-transform:uppercase; color:var(--muted); }}
+.kpi-val {{ font:700 27px/1.12 var(--display); letter-spacing:-.01em; margin:8px 0 2px; }}
 .kpi.kpi-good .kpi-val {{ color:var(--accent); }}
-.kpi-sub {{ font-size:12.5px; color:var(--faint); }}
+.kpi-sub {{ font:400 12.5px/1.3 var(--serif); color:var(--faint); }}
 
-.card {{ background:var(--card); border:1px solid var(--line); border-radius:16px; padding:22px 24px; margin:14px 0; scroll-margin-top:60px; }}
-.sec-head {{ display:flex; align-items:baseline; justify-content:space-between; gap:12px; }}
-.card h2 {{ font:700 21px/1.25 var(--sans); letter-spacing:-.01em; }}
-.card h3 {{ font:600 12.5px/1.3 var(--sans); letter-spacing:.03em; text-transform:uppercase; color:var(--muted); margin:22px 0 10px; }}
-.src {{ font:500 11.5px/1 var(--mono); color:var(--faint); white-space:nowrap; }}
-.explain {{ color:var(--muted); font-size:15px; margin:5px 0 16px; max-width:72ch; }}
+.card {{ background:var(--card); border:1px solid var(--rule); border-radius:3px; padding:26px 28px; margin:14px 0; scroll-margin-top:56px; }}
+.sec-head {{ display:flex; align-items:flex-start; justify-content:space-between; gap:12px; }}
+.card h2 {{ font:700 26px/1.15 var(--display); letter-spacing:-.015em; text-wrap:balance; }}
+.card h3 {{ font:600 12px/1.3 var(--sans); letter-spacing:.05em; text-transform:uppercase; color:var(--muted); margin:24px 0 11px; }}
+.src {{ font:600 10.5px/1.4 var(--mono); color:var(--faint); white-space:nowrap; text-transform:uppercase; letter-spacing:.05em; text-align:right; }}
+.explain {{ color:var(--muted); font:400 16px/1.55 var(--serif); margin:9px 0 20px; max-width:68ch; }}
 
-.tabs {{ display:inline-flex; gap:4px; background:var(--paper); border:1px solid var(--line);
-  border-radius:10px; padding:3px; margin-bottom:16px; }}
-.tabs button {{ font:600 13px/1 var(--sans); color:var(--muted); background:none; border:0;
-  padding:8px 14px; border-radius:8px; cursor:pointer; }}
-.tabs button.on {{ background:var(--card); color:var(--ink); box-shadow:0 1px 2px rgba(0,0,0,.06); }}
+.tabs {{ display:inline-flex; gap:2px; border:1px solid var(--rule); border-radius:3px; padding:3px; margin-bottom:18px; }}
+.tabs button {{ font:600 12px/1 var(--sans); letter-spacing:.03em; text-transform:uppercase; color:var(--muted); background:none; border:0; padding:8px 14px; border-radius:2px; cursor:pointer; }}
+.tabs button.on {{ background:var(--ink); color:var(--paper); }}
 .hidden {{ display:none !important; }}
 
-.movers {{ display:grid; grid-template-columns:repeat(4,1fr); gap:12px; }}
-.mover {{ border:1px solid var(--line); border-radius:12px; padding:13px; }}
+.movers {{ display:grid; grid-template-columns:repeat(4,1fr); gap:0; border-top:1px solid var(--rule); }}
+.mover {{ padding:15px 15px 15px 0; border-right:1px solid var(--rule); border-bottom:1px solid var(--rule); }}
+.mover:nth-child(4n) {{ border-right:0; }}
+.movers .mover {{ padding-left:15px; }}
+.movers .mover:nth-child(4n+1) {{ padding-left:0; }}
 .mv-top {{ display:flex; justify-content:space-between; align-items:baseline; }}
 .tk {{ font:700 16px/1 var(--sans); letter-spacing:-.01em; }}
-.px {{ font:600 13px/1 var(--sans); color:var(--muted); }}
-.spark {{ width:100%; height:38px; margin:8px 0; display:block; }}
+.px {{ font:600 12.5px/1 var(--mono); color:var(--muted); }}
+.spark {{ width:100%; height:38px; margin:9px 0; display:block; }}
 .chips {{ display:flex; flex-wrap:wrap; gap:5px; }}
-.chip {{ font:600 11px/1 var(--sans); padding:4px 6px; border-radius:6px; background:var(--paper); }}
+.chip {{ font:600 11px/1 var(--mono); padding:4px 6px; border-radius:2px; background:var(--paper); }}
 .chip em {{ font-style:normal; color:var(--faint); font-weight:500; }}
 .chip.up {{ color:var(--up); }} .chip.down {{ color:var(--down); }} .chip.flat {{ color:var(--muted); }}
-.mv-score {{ display:flex; align-items:center; gap:8px; margin-top:10px; font:600 12px/1 var(--sans); color:var(--muted); }}
-.mv-score b {{ margin-left:auto; color:var(--ink); }}
-.mv-news {{ font-size:12px; color:var(--muted); margin-top:9px; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden; }}
+.mv-score {{ display:flex; align-items:center; gap:8px; margin-top:11px; font:600 11px/1 var(--sans); text-transform:uppercase; letter-spacing:.04em; color:var(--muted); }}
+.mv-score b {{ margin-left:auto; font-family:var(--mono); color:var(--ink); }}
+.mv-news {{ font:400 13px/1.4 var(--serif); color:var(--muted); margin-top:10px;
+  display:-webkit-box; -webkit-line-clamp:3; line-clamp:3; -webkit-box-orient:vertical; overflow:hidden; }}
 
-.ibar {{ display:inline-block; width:52px; height:6px; background:var(--line); border-radius:3px; overflow:hidden; vertical-align:middle; }}
-.ibar i {{ display:block; height:100%; border-radius:3px; }}
+.ibar {{ display:inline-block; width:52px; height:6px; background:var(--rule); border-radius:2px; overflow:hidden; vertical-align:middle; }}
+.ibar i {{ display:block; height:100%; }}
 
-.oddswrap {{ display:grid; grid-template-columns:repeat(2,1fr); gap:12px; }}
-.odds {{ border:1px solid var(--line); border-radius:12px; padding:14px 16px; }}
-.odds-q {{ font:600 14px/1.35 var(--sans); margin-bottom:10px; }}
-.odds-q .sim {{ float:right; font:500 11px/1 var(--mono); color:var(--faint); }}
-.ob {{ display:flex; align-items:center; gap:10px; margin:5px 0; font-size:13px; }}
-.ob label {{ width:80px; color:var(--muted); }}
+.oddswrap {{ display:grid; grid-template-columns:repeat(2,1fr); gap:0; border-top:1px solid var(--rule); }}
+.odds {{ padding:15px 20px 15px 0; border-bottom:1px solid var(--rule); }}
+.odds:nth-child(odd) {{ border-right:1px solid var(--rule); padding-right:20px; }}
+.odds:nth-child(even) {{ padding-left:20px; }}
+.odds-q {{ font:600 15px/1.35 var(--serif); margin-bottom:10px; }}
+.odds-q .sim {{ float:right; font:600 10px/1 var(--mono); color:var(--faint); text-transform:uppercase; }}
+.ob {{ display:flex; align-items:center; gap:10px; margin:5px 0; font:400 13px/1 var(--mono); }}
+.ob label {{ width:82px; color:var(--muted); font-family:var(--sans); }}
 .ob .ibar {{ flex:1; width:auto; height:9px; }}
-.ob span {{ width:42px; text-align:right; font-weight:600; }}
-.odds-edge {{ margin-top:8px; font-size:12.5px; color:var(--muted); }}
-.odds-edge b {{ color:var(--accent); }}
-.ocols {{ display:grid; grid-template-columns:1fr 1fr; gap:14px 28px; }}
+.ob span {{ width:56px; text-align:right; font-weight:600; }}
+.odds-edge {{ margin-top:8px; font:400 12.5px/1.4 var(--serif); color:var(--muted); }}
+.odds-edge b {{ color:var(--accent); font-family:var(--mono); }}
+.ocols {{ display:grid; grid-template-columns:1fr 1fr; gap:14px 30px; }}
 .ocol h3 {{ margin-top:6px; }}
-.odds1 {{ display:flex; align-items:center; gap:12px; padding:9px 0; border-bottom:1px solid var(--line); }}
+.odds1 {{ display:flex; align-items:center; gap:12px; padding:9px 0; border-bottom:1px solid var(--rule); }}
 .odds1:last-child {{ border-bottom:0; }}
-.o1-q {{ flex:1 1 auto; font-size:13.5px; line-height:1.35; }}
-.odds1 .ob {{ flex:0 0 120px; }}
+.o1-q {{ flex:1 1 auto; font:400 14px/1.35 var(--serif); }}
+.odds1 .ob {{ flex:0 0 128px; }}
 .odds1 .ob .ibar {{ height:8px; }}
 .o1-v {{ display:none; }}
 
 .chart svg, .chart.wide svg {{ width:100%; height:auto; display:block; }}
-.split {{ display:grid; grid-template-columns:1.25fr 1fr; gap:24px; align-items:center; }}
+.split {{ display:grid; grid-template-columns:1.25fr 1fr; gap:26px; align-items:center; }}
 .ax {{ font:500 11px var(--sans); fill:var(--faint); }}
 .axt {{ font:600 12px var(--sans); fill:var(--muted); }}
-.diag {{ font:500 11px var(--sans); fill:var(--faint); }}
+.diag {{ font:italic 11px var(--serif); fill:var(--faint); }}
 .leg {{ font:500 13px var(--sans); fill:var(--ink); }}
 .readout {{ display:flex; flex-direction:column; }}
 
-.stat {{ display:flex; align-items:baseline; gap:12px; padding:10px 0; border-bottom:1px solid var(--line); flex-wrap:wrap; }}
+.stat {{ display:flex; align-items:baseline; gap:12px; padding:11px 0; border-bottom:1px solid var(--rule); flex-wrap:wrap; }}
 .stat:last-child {{ border-bottom:0; }}
-.stat-label {{ font-size:14px; color:var(--muted); flex:1 1 auto; }}
-.stat-val {{ font:650 19px/1 var(--sans); }}
-.stat.big .stat-val {{ font-size:28px; color:var(--accent); }}
-.stat-sub {{ font-size:12px; color:var(--faint); flex-basis:100%; text-align:right; margin-top:-3px; }}
+.stat-label {{ font:400 14px/1.4 var(--serif); color:var(--muted); flex:1 1 auto; }}
+.stat-val {{ font:600 19px/1 var(--mono); }}
+.stat.big .stat-val {{ font:700 30px/1 var(--display); color:var(--accent); }}
+.stat-sub {{ font:400 12px/1.3 var(--serif); color:var(--faint); flex-basis:100%; text-align:right; margin-top:-3px; }}
 
-.grid3 {{ display:grid; grid-template-columns:repeat(3,1fr); gap:12px; margin-top:18px; }}
-.mini {{ border:1px solid var(--line); border-radius:12px; padding:15px; }}
-.mini h4 {{ font:600 14px/1 var(--sans); margin-bottom:9px; }}
-.mini .m-val {{ font:700 23px/1 var(--sans); }}
-.mini .m-base {{ font-size:12.5px; color:var(--faint); margin-top:3px; }}
-.mini .m-note {{ font-size:13px; color:var(--muted); margin-top:8px; }}
+.grid3 {{ display:grid; grid-template-columns:repeat(3,1fr); gap:0; margin-top:20px; border-top:1px solid var(--rule); }}
+.mini {{ padding:16px 18px 16px 0; border-right:1px solid var(--rule); }}
+.mini:last-child {{ border-right:0; }}
+.grid3 .mini {{ padding-left:18px; }} .grid3 .mini:first-child {{ padding-left:0; }}
+.mini h4 {{ font:700 15px/1 var(--display); margin-bottom:9px; }}
+.mini .m-val {{ font:700 24px/1 var(--mono); }}
+.mini .m-base {{ font:400 12.5px/1.3 var(--serif); color:var(--faint); margin-top:4px; }}
+.mini .m-note {{ font:400 13px/1.4 var(--serif); color:var(--muted); margin-top:9px; }}
 
-table {{ width:100%; border-collapse:collapse; font-size:14px; }}
+table {{ width:100%; border-collapse:collapse; font:400 14px/1.5 var(--mono); font-variant-numeric:tabular-nums lining-nums; }}
 .twrap {{ overflow-x:auto; }}
-th {{ text-align:left; font:600 11.5px/1 var(--sans); letter-spacing:.03em; text-transform:uppercase;
-  color:var(--faint); padding:0 12px 9px 0; border-bottom:1px solid var(--line); }}
+th {{ text-align:left; font:600 11px/1 var(--sans); letter-spacing:.05em; font-variant-caps:all-small-caps; text-transform:lowercase;
+  color:var(--muted); padding:0 12px 9px 0; border-bottom:2px solid var(--ink); }}
 table.sortable th {{ cursor:pointer; user-select:none; white-space:nowrap; }}
 table.sortable th i {{ display:inline-block; width:0; height:0; margin-left:4px; opacity:.35;
   border-left:4px solid transparent; border-right:4px solid transparent; border-top:5px solid currentColor; }}
 table.sortable th.asc i {{ border-top:0; border-bottom:5px solid currentColor; opacity:1; }}
 table.sortable th.desc i {{ opacity:1; }}
 th.num {{ text-align:right; }}
-td {{ padding:9px 12px 9px 0; border-bottom:1px solid var(--line); }}
+td {{ padding:10px 12px 10px 0; border-bottom:1px solid var(--rule); }}
 tr:last-child td {{ border-bottom:0; }}
+td:first-child {{ font-family:var(--serif); }}
 td.num {{ text-align:right; }}
-td.num span {{ display:inline-block; min-width:52px; }}
-td .swatch, .scard .swatch {{ width:10px; height:10px; border-radius:3px; display:inline-block; margin-right:8px; }}
-tr.hl td {{ background:#fdf4ee; }}
+td.num span {{ display:inline-block; min-width:56px; }}
+td .swatch, .scard .swatch {{ width:9px; height:9px; border-radius:2px; display:inline-block; margin-right:8px; }}
+tr.hl td {{ background:#faf4ee; }}
 .up {{ color:var(--up); }} .down {{ color:var(--down); }}
 
-.mlcard {{ display:flex; gap:12px; align-items:flex-start; background:#fdf4ee; border:1px solid #f0d8c6;
-  border-radius:12px; padding:14px 16px; margin-top:16px; font-size:13.5px; color:#5a3a25; }}
-.mlcard .dot {{ width:12px; height:12px; border-radius:50%; margin-top:4px; flex:none; }}
+.mlcard {{ display:flex; gap:12px; align-items:flex-start; background:#faf4ee; border:1px solid #ecd9c8;
+  border-radius:3px; padding:15px 17px; margin-top:16px; font:400 14px/1.5 var(--serif); color:#5a3a25; }}
+.mlcard .dot {{ width:11px; height:11px; border-radius:50%; margin-top:5px; flex:none; }}
 .mlcard b {{ color:#3f2717; }}
 
-.note {{ background:var(--accent-soft); border:1px solid #cfe6e1; border-radius:12px; padding:13px 15px; font-size:13.5px; color:#1c3b36; margin-top:16px; }}
-.fine {{ font-size:13px; color:var(--muted); margin-top:12px; max-width:74ch; }}
-.empty {{ color:var(--muted); font-size:14.5px; background:var(--paper); border:1px dashed var(--line); border-radius:12px; padding:16px; }}
+.note {{ background:var(--accent-soft); border:1px solid #cfe2de; border-radius:3px; padding:14px 16px; font:400 14px/1.55 var(--serif); color:#1d3b37; margin-top:18px; }}
+.fine {{ font:400 13px/1.5 var(--serif); color:var(--muted); margin-top:13px; max-width:72ch; }}
+.empty {{ color:var(--muted); font:400 15px/1.5 var(--serif); background:#fbfaf7; border:1px dashed var(--rule); border-radius:3px; padding:16px; }}
 
-.gauge {{ margin:2px 0 16px; }}
-.gbar {{ height:14px; border-radius:7px; background:linear-gradient(90deg,#e7f1ef,#f7e6c9,#f4d3cb); position:relative; overflow:hidden; }}
+.gauge {{ margin:2px 0 18px; }}
+.gbar {{ height:14px; border-radius:2px; background:linear-gradient(90deg,#e8f1ef,#f3ead6,#f2dad2); position:relative; overflow:hidden; }}
 .gbar i {{ position:absolute; top:0; bottom:0; left:0; border-right:3px solid var(--ink); }}
-.glabels {{ display:flex; justify-content:space-between; font-size:11.5px; color:var(--faint); margin-top:5px; }}
+.glabels {{ display:flex; justify-content:space-between; font:600 11px/1 var(--mono); color:var(--faint); margin-top:6px; text-transform:uppercase; }}
 
-.scards {{ display:grid; grid-template-columns:repeat(2,1fr); gap:10px 20px; }}
-.scard {{ padding:11px 0; border-bottom:1px solid var(--line); }}
+.scards {{ display:grid; grid-template-columns:repeat(2,1fr); gap:0; border-top:1px solid var(--rule); }}
+.scard {{ padding:13px 20px 13px 0; border-bottom:1px solid var(--rule); }}
+.scard:nth-child(odd) {{ border-right:1px solid var(--rule); }}
+.scard:nth-child(even) {{ padding-left:20px; }}
 .scard-top {{ display:flex; align-items:center; gap:2px; }}
-.sname {{ font:600 15px/1 var(--sans); }}
-.sret {{ margin-left:auto; font:650 14px/1 var(--sans); }}
-.scard p {{ font-size:13px; color:var(--muted); margin-top:6px; }}
+.sname {{ font:700 15px/1 var(--display); }}
+.sret {{ margin-left:auto; font:600 14px/1 var(--mono); }}
+.scard p {{ font:400 13.5px/1.45 var(--serif); color:var(--muted); margin-top:6px; }}
 
-.faq p {{ font-size:15px; margin-bottom:12px; max-width:74ch; }}
+.faq p {{ font:400 16px/1.6 var(--serif); margin-bottom:13px; max-width:70ch; }}
 .rules {{ list-style:none; }}
-.rules li {{ display:flex; gap:12px; font-size:14.5px; padding:2px 0; }}
-.rules .rn {{ color:var(--accent); font-weight:700; }}
+.rules li {{ display:flex; gap:14px; font:400 15.5px/1.5 var(--serif); padding:5px 0; align-items:baseline; }}
+.rules .rn {{ color:var(--accent); font:700 18px/1 var(--display); flex:none; width:20px; }}
 
-footer {{ margin-top:26px; padding-top:16px; border-top:1px solid var(--line); font-size:13px; color:var(--faint); }}
+footer {{ margin-top:32px; padding-top:18px; border-top:1px solid var(--rule); font:400 12.5px/1.6 var(--sans); color:var(--faint); text-align:center; }}
 
-.reveal {{ animation:rise .5s ease-out both; }}
-@keyframes rise {{ from {{ opacity:0; transform:translateY(9px); }} to {{ opacity:1; transform:none; }} }}
+.reveal {{ animation:up .5s cubic-bezier(.2,.6,.2,1) both; }}
+@keyframes up {{ from {{ opacity:0; transform:translateY(8px); }} to {{ opacity:1; transform:none; }} }}
+a,button,.kpi {{ transition:color .15s ease, border-color .15s ease, background .15s ease; }}
 @media (prefers-reduced-motion:reduce) {{ .reveal {{ animation:none; }} }}
 @media (max-width:900px) {{
   .kpis {{ grid-template-columns:repeat(2,1fr); }}
+  .kpi:nth-child(2) {{ border-right:0; }}
   .movers {{ grid-template-columns:repeat(2,1fr); }}
-  .oddswrap, .split, .grid3, .scards {{ grid-template-columns:1fr; }}
+  .mover:nth-child(2n) {{ border-right:0; }} .movers .mover:nth-child(2n+1) {{ padding-left:0; }} .movers .mover {{ padding-left:15px; }}
+  .oddswrap, .split, .grid3, .scards, .ocols {{ grid-template-columns:1fr; }}
+  .odds:nth-child(odd) {{ border-right:0; padding-right:0; }} .odds:nth-child(even) {{ padding-left:0; }}
+  .mini {{ border-right:0; }} .grid3 .mini {{ padding-left:0; }}
+  .scard:nth-child(odd) {{ border-right:0; }} .scard:nth-child(even) {{ padding-left:0; }}
 }}
-@media (max-width:520px) {{ .movers {{ grid-template-columns:1fr; }} }}
+@media (max-width:520px) {{ .movers {{ grid-template-columns:1fr; }} .mover {{ border-right:0; }} }}
 </style>
 </head>
 <body>
 <div class="wrap">
-<header>
-  <div class="eyebrow">Forecasting &amp; markets lab</div>
-  <h1>Predictions, kept honest.</h1>
-  <p>Forecasts for sports, prediction markets, stocks and the economy — each scored on how right it
-     actually is. Click the tabs to explore; tables sort on any column.</p>
-  <div class="meta">
-    <span class="tag live" id="clock" data-gen="{_esc(state.generated)}">as of {_esc(state.generated)}</span>
-    <span class="tag">{sources_total:,} sources tracked</span>
-    <span class="tag warn">Research project · not financial advice</span>
+
+<header class="masthead">
+  <div class="wordmark">The Forecasting Briefing</div>
+  <div class="subword">A research bulletin on markets, sports &amp; the economy — every forecast scored on how right it actually is.</div>
+  <div class="dateline">
+    <span>{_esc(dateline)}</span>
+    <span>Research briefing</span>
+    <span>No. {issue}</span>
+    <span>{sources_total:,} sources tracked</span>
+    <span class="live" id="clock" data-gen="{_esc(state.generated)}">updated {_esc(state.generated)}</span>
   </div>
 </header>
 
-<nav>{nav}</nav>
+<div class="lead">
+  <div class="kicker">Today's briefing</div>
+  <h1>Predictions, kept honest.</h1>
+  <p class="deck">Sports, prediction markets, stocks and the economy — forecast, then marked against reality. Click the tabs to explore; every table sorts on any column.</p>
+</div>
 
 <div class="kpis">{glance}</div>
 
-{_section("now", "What's moving now", "Today's trending stocks, scored two ways: steady climbers (NVIDIA-shape trends) and fast money (GameStop-shape squeezes). Each card shows the recent price line, how far it's moved, and a signal score. Attention, not advice.", now_body, "Yahoo + Google News")}
+<nav>{nav}</nav>
 
-{_section("markets", "Prediction-market odds", "Live YES odds on the most-traded markets at each venue — the current, high-value questions people are betting on. When the same question is priced on both Kalshi and Polymarket, the gap is flagged as a candidate to investigate (verify both resolve identically before believing any 'arb').", odds_body, "Kalshi + Polymarket")}
+{_section("now", "Markets · Movers", "What's moving now", "Today's trending stocks, scored two ways: steady climbers (NVIDIA-shape trends) and fast money (GameStop-shape squeezes). Each card shows the recent price line, how far it's moved, and a signal score. Attention, not advice.", now_body, "Yahoo + Google News")}
 
-{_section("strategies", "Strategy leaderboard", "Seven strategies — including one machine-learning model — race on historical prices with fees charged. A paper-trading experiment answering 'which style would have worked', not a live account.", arena_body + strategies_extra)}
+{_section("markets", "Prediction markets", "Where the money is betting", "Live YES odds on the most-traded markets at each venue — the current, high-value questions people are betting on. When the same question is priced on both Kalshi and Polymarket, the gap is flagged as a candidate to investigate (verify both resolve identically before believing any 'arb').", odds_body, "Kalshi + Polymarket")}
 
-{_section("forward", "Live study — watching it play out", "The stricter test: each run records what every strategy would buy today on a real basket, then marks it on the next run. Nothing is scored until real time passes, so it can't cheat.", forward_body)}
+{_section("strategies", "Strategy arena", "Strategy leaderboard", "Seven strategies — including one machine-learning model — race on historical prices with fees charged. A paper-trading experiment answering 'which style would have worked', not a live account.", arena_body + strategies_extra)}
 
-{_section("trust", "Are the predictions trustworthy? · Sports models", "When the model says 30%, does it happen about 30% of the time? The closer the dots to the line, the more you can trust the numbers. Each sport is scored (Brier, lower is better) against simply guessing the base rate.", sports_body, "sports Elo")}
+{_section("forward", "Out-of-sample", "Live study — watching it play out", "The stricter test: each run records what every strategy would buy today on a real basket, then marks it on the next run. Nothing is scored until real time passes, so it can't cheat.", forward_body)}
 
-{_section("economy", "Economy check", "A read on recession risk from the bond market. When short-term rates rise above long-term ones (an 'inverted' yield curve), recessions have historically followed.", macro_body, "FRED")}
+{_section("trust", "Calibration · Sports", "Are the predictions trustworthy?", "When the model says 30%, does it happen about 30% of the time? The closer the dots to the line, the more you can trust the numbers. Each sport is scored (Brier, lower is better) against simply guessing the base rate.", sports_body, "sports Elo")}
 
-{_section("record", "Track record", "The credibility piece: real predictions, logged with a probability and scored once the outcome is known — including whether they beat the market's own price.", track_body)}
+{_section("economy", "Macro", "Economy check", "A read on recession risk from the bond market. When short-term rates rise above long-term ones (an 'inverted' yield curve), recessions have historically followed.", macro_body, "FRED")}
+
+{_section("record", "Track record", "The scored forecasts", "The credibility piece: real predictions, logged with a probability and scored once the outcome is known — including whether they beat the market's own price.", track_body)}
 
 {media_section}
 
 <section class="card faq reveal">
-  <div class="sec-head"><h2>Is it actually making money?</h2></div>
+  <div class="sec-head"><div><div class="kicker">The honest bit</div><h2>Is it actually making money?</h2></div></div>
   <p><strong>Honestly, no — and it's not pretending to.</strong> Everything here is simulated or paper-traded.
   The models are well-calibrated (their probabilities are trustworthy), but calibrated isn't the same as having
   an edge the market hasn't already priced in.</p>
@@ -765,7 +807,7 @@ footer {{ margin-top:26px; padding-top:16px; border-top:1px solid var(--line); f
 </section>
 
 <section class="card reveal">
-  <div class="sec-head"><h2>The ground rules</h2></div>
+  <div class="sec-head"><div><div class="kicker">Method</div><h2>The ground rules</h2></div></div>
   <p class="explain">The habits that separate real research from a lucky-looking backtest — baked into every number above.</p>
   <ul class="rules">
     <li><span class="rn">1</span><span>Only test on the past, predict the future — never let tomorrow's data leak into today.</span></li>
@@ -777,8 +819,8 @@ footer {{ margin-top:26px; padding-top:16px; border-top:1px solid var(--line); f
 </section>
 
 <footer>
-  Updates on its own (auto-refreshes here every 30 min). Not investment advice. Data from public sources
-  (Kalshi, Polymarket, Yahoo, FRED, arXiv, football-data.co.uk and others), each under its own terms.
+  Set in Charter &amp; Iowan Old Style · No. {issue} · auto-refreshes every 30&nbsp;min · Not financial advice.<br>
+  Data from public sources (Kalshi, Polymarket, Yahoo, FRED, arXiv, football-data.co.uk and others), each under its own terms.
 </footer>
 </div>
 
