@@ -45,6 +45,7 @@ flab-watch = "forecasting_lab.cli.watch:main"
 flab-alert = "forecasting_lab.cli.alert:main"
 flab-run-all = "forecasting_lab.cli.run_all:main"
 flab-intraday = "forecasting_lab.cli.intraday:main"
+flab-log-call = "forecasting_lab.agent_trader.research_log:main"
 flab-cron = "forecasting_lab.cli.cron:main"
 
 [project.urls]
