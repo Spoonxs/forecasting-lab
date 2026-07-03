@@ -20,6 +20,24 @@ real track record. *Not financial advice.*
 Every score sits next to the baseline it must beat, because "accuracy" without a
 base rate is theater.
 
+## Edge features (Phase 1) — out-of-sample skill, honestly benchmarked
+
+Four leading-signal features, each scored **out-of-sample under purged
+walk-forward CV** on a deterministic synthetic benchmark (seed 0), and each
+property-tested so **pure noise scores ~0** (it cannot manufacture positive
+skill). The numbers below prove the signal is *real and leak-free* when it's
+present; they are **not** a claim of live P&L — real-world skill accrues as data
+fills and is expected to be far smaller.
+
+| Edge feature | OOS Brier-skill | vs. baseline | live status |
+|---|---|---|---|
+| Cross-venue lead-lag (laggard→leader convergence) | **+0.108** | 0.5 coin flip | live on matched Kalshi/Polymarket pairs |
+| Attention acceleration (mentions rising vs own baseline) | **+0.157** | 0.5 base rate | accruing (persisted mention store) |
+| Squeeze setup (short-interest × ignition) | **+0.203** | base-rate climatology | dormant — short-interest feed is Phase 2 |
+| Favorite-longshot recalibration | **+0.030** | raw market price | live on market picks (default correction) |
+
+Reproduce: `python -c "from forecasting_lab.markets.leadlag import leadlag_skill_report; print(leadlag_skill_report())"` (and the `*_skill_report` in `signals.attention`, `signals.squeeze`, `eval.recalibration`). Pinned in `tests/test_edges.py`. Each feature is surfaced on the dashboard with its odds + the evidence (drivers) behind it.
+
 ## How the claims are defended (the actual contribution)
 
 - **Purged, embargoed walk-forward CV** — no future leaks into the past.

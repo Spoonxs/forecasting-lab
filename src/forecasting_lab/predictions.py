@@ -84,6 +84,9 @@ def mover_prediction(card: dict) -> Prediction:
     if card.get("volume_spike") is not None:
         v = float(card["volume_spike"])
         drivers.append(Driver("volume vs 20-day", v, v - 1.0))
+    accel = card.get("attention_accel")
+    if accel is not None and abs(float(accel)) > 1e-9:
+        drivers.append(Driver("attention acceleration (z)", float(accel), float(accel)))
     drivers.append(Driver("trend composite (z)", score, score))
     return Prediction(
         probability=p,
@@ -96,21 +99,28 @@ def mover_prediction(card: dict) -> Prediction:
 
 
 def market_prediction(event: str, yes: float, venue: str, *, gap: float | None = None,
-                      similarity: float | None = None) -> Prediction:
-    """A prediction-market pick: the odds ARE the venue's live YES price."""
-    yes = float(yes)
+                      similarity: float | None = None, fair_value: float | None = None) -> Prediction:
+    """A prediction-market pick. Odds = the venue's live YES price, unless a
+    recalibrated ``fair_value`` is supplied (favorite-longshot correction), in which
+    case the pick's probability is the fair value and the edge vs. the market shows."""
+    yes = min(max(float(yes), 0.0), 1.0)
+    model_p = min(max(float(fair_value), 0.0), 1.0) if fair_value is not None else yes
     drivers = [
         Driver(f"{venue} live YES price", yes, 0.0),
         Driver("among the most-traded (liquidity)", 1.0, 0.0),
     ]
     if gap is not None:
         drivers.append(Driver("cross-venue price gap", float(gap), float(gap)))
+    caveat = ("This is the market's own price; the lab has no independent model for this "
+              "question yet, so there is no claimed edge.")
+    if fair_value is not None:
+        caveat = ("Fair value applies a default favorite-longshot correction to the market "
+                  "price; it is replaced by a fit on your resolved markets as they accrue.")
     return Prediction(
-        probability=min(max(yes, 0.0), 1.0),
+        probability=model_p,
         drivers=tuple(drivers),
-        caveat="This is the market's own price; the lab has no independent model for this "
-               "question yet, so there is no claimed edge.",
+        caveat=caveat,
         label=event,
-        market_implied_prob=min(max(yes, 0.0), 1.0),
+        market_implied_prob=yes,
         kind="market",
     )

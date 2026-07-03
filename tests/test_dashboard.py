@@ -102,6 +102,12 @@ def _minimal_state():
         {"event": "Will X happen?", "kalshi": 0.42, "poly": 0.55, "net_edge": 0.1,
          "direction": "buy_kalshi", "poly_event": "X happens", "similarity": 0.9},
     ]}
+    state.edge_features = {"empty": False, "rows": [
+        {"name": "Cross-venue lead-lag", "skill": 0.05, "what": "who moves first", "status": "live"},
+        {"name": "Attention acceleration", "skill": 0.12, "what": "mentions accelerating", "status": "accruing"},
+        {"name": "Squeeze setup", "skill": 0.18, "what": "short + ignition", "status": "dormant"},
+        {"name": "Favorite-longshot recalibration", "skill": 0.03, "what": "price bias", "status": "live"},
+    ]}
     return state
 
 
@@ -128,7 +134,10 @@ def test_render_dashboard_is_an_interactive_visual_tool():
     assert 'class="why"' in html  # the evidence expander
     assert "· why" in html  # summary carries the odds + a "why" toggle
     assert "trend composite" in html  # a named driver on the mover pick
-    assert "market&#x27;s own price" in html  # the market pick's honest caveat (apostrophe escaped)
+    # Phase 1: edge-research panel + recalibration edge surfaced on market picks
+    assert "Edge research" in html
+    assert "Cross-venue lead-lag" in html and "OOS skill" in html
+    assert "edge vs market" in html  # favorite-longshot recalibration shows a fair-value edge
     # plain-English section titles (apostrophes are HTML-escaped in titles)
     assert "moving now" in html
     assert "Strategy leaderboard" in html

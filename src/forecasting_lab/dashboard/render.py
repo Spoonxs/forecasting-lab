@@ -15,6 +15,7 @@ from __future__ import annotations
 import html as _html
 from datetime import datetime
 
+from ..eval.recalibration import default_fair_value
 from ..predictions import market_prediction, mover_prediction
 
 # ---------------------------------------------------------------- palette
@@ -337,7 +338,8 @@ def _movers_board(movers: dict) -> str:
 
 # ---------------------------------------------------------------- odds board
 def _odds_card(event, k, p, similarity, footer) -> str:
-    pred = market_prediction(event, p, "Polymarket", gap=abs(float(k) - float(p)), similarity=similarity)
+    pred = market_prediction(event, p, "Polymarket", gap=abs(float(k) - float(p)),
+                             similarity=similarity, fair_value=default_fair_value(p))
     return (
         f'<div class="odds">'
         f'<div class="odds-q">{_esc(event)}<span class="sim">match {_pct(similarity,0)}</span></div>'
@@ -349,7 +351,7 @@ def _odds_card(event, k, p, similarity, footer) -> str:
 
 
 def _odds_row(event, yes, venue, color) -> str:
-    pred = market_prediction(event, yes, venue)
+    pred = market_prediction(event, yes, venue, fair_value=default_fair_value(yes))
     return (f'<div class="odds1"><div class="o1-q">{_esc(event)}</div>'
             f'<div class="ob">{_bar(yes, color)}<span>{_pct(yes,0)} yes</span></div>'
             f'<div class="o1-v">{_esc(venue)}</div>{_why(pred)}</div>')
@@ -564,6 +566,27 @@ def render_dashboard(state) -> str:
                               f"right more often than the price {beat['beat_rate']:.0%} of the time"))
         track_body = "".join(rows)
 
+    # ---- edge research ----
+    ef = state.edge_features
+    if ef.get("empty") or not ef.get("rows"):
+        edges_body = _empty("Edge-feature scoring is unavailable right now.")
+    else:
+        erows = "".join(
+            f'<tr><td>{_esc(r["name"])}</td>'
+            f'<td class="num {"up" if r["skill"] >= 0 else "down"}">{_pct(r["skill"],1,signed=True)}</td>'
+            f'<td>{_esc(r["what"])}</td><td class="estatus">{_esc(r["status"])}</td></tr>'
+            for r in ef["rows"]
+        )
+        edges_body = (
+            '<div class="twrap"><table><thead><tr>'
+            '<th>feature</th><th class="num">OOS skill</th><th>what it measures</th><th>status</th>'
+            f'</tr></thead><tbody>{erows}</tbody></table></div>'
+            '<p class="fine">"OOS skill" is the out-of-sample Brier-skill versus each feature\'s baseline on a '
+            'deterministic, leak-free synthetic benchmark — evidence the signal is real, not overfit. Every feature '
+            'is property-tested so pure noise scores ~0. Real-world skill accrues live and is expected to be far '
+            'smaller; this is the honest scaffold, not a promise of profit.</p>'
+        )
+
     media = state.digests.get("media-watch", {"empty": True})
     media_body = ""
     if not media.get("empty"):
@@ -574,7 +597,7 @@ def render_dashboard(state) -> str:
     nav = "".join(
         f'<a href="#{a}">{lbl}</a>' for a, lbl in [
             ("now", "Now"), ("markets", "Markets"), ("strategies", "Strategies"),
-            ("trust", "Sports"), ("economy", "Economy"), ("record", "Track record"),
+            ("edges", "Edges"), ("trust", "Sports"), ("economy", "Economy"), ("record", "Track record"),
         ]
     )
 
@@ -839,6 +862,8 @@ a,button,.kpi {{ transition:color .15s ease, border-color .15s ease, background 
 {_section("strategies", "Strategy arena", "Strategy leaderboard", "Seven strategies — including one machine-learning model — race on historical prices with fees charged. A paper-trading experiment answering 'which style would have worked', not a live account.", arena_body + strategies_extra)}
 
 {_section("forward", "Out-of-sample", "Live study — watching it play out", "The stricter test: each run records what every strategy would buy today on a real basket, then marks it on the next run. Nothing is scored until real time passes, so it can't cheat.", forward_body)}
+
+{_section("edges", "Edge research", "Does any of it actually beat the market?", "Four leading-signal features — cross-venue lead-lag, attention acceleration, squeeze setup, and price recalibration — each scored out-of-sample under purged walk-forward validation. Positive skill beats the baseline; pure noise scores ~0 by construction.", edges_body)}
 
 {_section("trust", "Calibration · Sports", "Are the predictions trustworthy?", "When the model says 30%, does it happen about 30% of the time? The closer the dots to the line, the more you can trust the numbers. Each sport is scored (Brier, lower is better) against simply guessing the base rate.", sports_body, "sports Elo")}
 

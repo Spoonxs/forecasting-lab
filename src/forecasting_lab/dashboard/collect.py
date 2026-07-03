@@ -32,6 +32,7 @@ class LabState:
     digests: dict = field(default_factory=dict)  # slug -> {path, tables, headlines}
     movers: dict = field(default_factory=dict)  # structured trending stocks (sparklines + scores)
     market_edges: dict = field(default_factory=dict)  # structured cross-venue odds pairs
+    edge_features: dict = field(default_factory=dict)  # Phase-1 edge features + their OOS skill
 
 
 def _fit_tennis(seed: int = 0) -> dict:
@@ -217,7 +218,45 @@ def collect_lab_state(seed: int = 0) -> LabState:
 
     state.movers = read_latest_data("trending-stocks") or {"empty": True}
     state.market_edges = read_latest_data("market-divergence") or {"empty": True}
+    state.edge_features = _edge_features()
     return state
+
+
+def _edge_features() -> dict:
+    """Each Phase-1 edge feature with its out-of-sample Brier-skill (deterministic,
+    synthetic demonstration that the feature is leak-free and extracts real signal —
+    live skill accrues as data fills)."""
+    from ..markets.leadlag import leadlag_skill_report
+    from ..signals.attention import attention_skill_report
+    from ..signals.squeeze import squeeze_skill_report
+
+    try:
+        from ..eval.recalibration import recalibration_skill_report
+
+        recal = recalibration_skill_report(seed=7)
+        return {
+            "empty": False,
+            "rows": [
+                {"name": "Cross-venue lead-lag",
+                 "skill": leadlag_skill_report(seed=7)["brier_skill_vs_baseline"],
+                 "what": "Which venue moves first; the laggard converges to the leader.",
+                 "status": "live on matched Kalshi/Polymarket pairs"},
+                {"name": "Attention acceleration",
+                 "skill": attention_skill_report(seed=7)["brier_skill_vs_baseline"],
+                 "what": "Mentions rising faster than a name's own baseline — the leading edge of a trend.",
+                 "status": "accruing (needs a few days of history)"},
+                {"name": "Squeeze setup",
+                 "skill": squeeze_skill_report(seed=7)["brier_skill_vs_baseline"],
+                 "what": "High short interest + days-to-cover, gated by a volume/gap ignition.",
+                 "status": "dormant (short-interest feed is Phase 2)"},
+                {"name": "Favorite-longshot recalibration",
+                 "skill": recal["brier_skill_vs_market"],
+                 "what": "Corrects the price bias: longshots overpriced, favorites underpriced.",
+                 "status": "live on market picks (default correction until fit on resolutions)"},
+            ],
+        }
+    except Exception:  # pragma: no cover - defensive
+        return {"empty": True}
 
 
 def latest_digest_dir() -> Path:
