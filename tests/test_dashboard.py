@@ -108,6 +108,10 @@ def _minimal_state():
         {"name": "Squeeze setup", "skill": 0.18, "what": "short + ignition", "status": "dormant"},
         {"name": "Favorite-longshot recalibration", "skill": 0.03, "what": "price bias", "status": "live"},
     ]}
+    state.voices = {"as_of": "2026-07-03", "rows": [
+        {"voice": "@early_sharp", "n_calls": 100, "brier_skill": 0.30, "lead": 3, "corr": 0.3, "weight": 0.20},
+        {"voice": "@noise", "n_calls": 100, "brier_skill": -0.50, "lead": 0, "corr": 0.0, "weight": 0.0},
+    ]}
     return state
 
 
@@ -138,6 +142,9 @@ def test_render_dashboard_is_an_interactive_visual_tool():
     assert "Edge research" in html
     assert "Cross-venue lead-lag" in html and "OOS skill" in html
     assert "edge vs market" in html  # favorite-longshot recalibration shows a fair-value edge
+    # Phase 3: the "ahead of the curve" voice leaderboard renders with record + lead
+    assert "Ahead of the curve" in html
+    assert "@early_sharp" in html and "3d early" in html
     # plain-English section titles (apostrophes are HTML-escaped in titles)
     assert "moving now" in html
     assert "Strategy leaderboard" in html

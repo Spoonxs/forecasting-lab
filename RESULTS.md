@@ -38,6 +38,17 @@ fills and is expected to be far smaller.
 
 Reproduce: `python -c "from forecasting_lab.markets.leadlag import leadlag_skill_report; print(leadlag_skill_report())"` (and the `*_skill_report` in `signals.attention`, `signals.squeeze`, `eval.recalibration`). Pinned in `tests/test_edges.py`. Each feature is surfaced on the dashboard with its odds + the evidence (drivers) behind it.
 
+## Ahead of the curve (Phase 3) — voices ranked by record, not followers
+
+Each tracked voice is scored two honest ways — **Brier-skill vs. the base rate**
+(were they *right*?) and a **cross-correlation timing lead** (were they *early*?) —
+ranked by that record with a **decay** when a reputation regresses. The leakage
+guard is pinned: a voice making **random calls scores ~0** (weight 0), a reactor
+who echoes yesterday scores ≤0, and an early-and-right voice rises to the top
+(`tests/test_voices.py`). Live names/ranks accrue as logged calls (`VoiceLedger`)
+are marked to real prices; the dashboard shows the deterministic synthetic
+demonstration until then — the engine and its guarantees are real now.
+
 ## How the claims are defended (the actual contribution)
 
 - **Purged, embargoed walk-forward CV** — no future leaks into the past.

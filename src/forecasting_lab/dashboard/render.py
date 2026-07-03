@@ -587,6 +587,34 @@ def render_dashboard(state) -> str:
             'smaller; this is the honest scaffold, not a promise of profit.</p>'
         )
 
+    # ---- ahead of the curve (voices) ----
+    vlb = state.voices
+    vrows = vlb.get("rows") or []
+    if not vrows:
+        voices_body = _empty("Voice track records haven't accrued yet.")
+    else:
+        trs = "".join(
+            f'<tr><td>{_esc(r["voice"])}</td>'
+            f'<td class="num {"up" if r["brier_skill"] >= 0 else "down"}">{_pct(r["brier_skill"],1,signed=True)}</td>'
+            f'<td class="num">{"—" if not r["lead"] else str(r["lead"]) + "d early"}</td>'
+            f'<td class="num">{int(r["n_calls"])}</td>'
+            f'<td class="num">{_bar(min(1.0, r["weight"] / 0.3), STRATEGY_COLORS["momentum_60d"])}'
+            f'<span>{r["weight"]:.2f}</span></td></tr>'
+            for r in vrows
+        )
+        asof = _esc(vlb.get("as_of", ""))
+        voices_body = (
+            '<div class="twrap"><table class="sortable"><thead><tr>'
+            '<th data-sort="0">voice<i></i></th><th data-sort="1" class="num">right (Brier-skill)<i></i></th>'
+            '<th data-sort="2" class="num">early (lead)<i></i></th><th data-sort="3" class="num">calls<i></i></th>'
+            '<th data-sort="4" class="num">weight<i></i></th>'
+            f'</tr></thead><tbody>{trs}</tbody></table></div>'
+            f'<p class="fine">Ranked by <em>record</em>, never followers — "right" is Brier-skill vs the base rate, '
+            f'"early" is the lead at which the voice\'s calls best predict the move, and a stale record decays. '
+            f'As of {asof}. This is a deterministic synthetic demonstration that the scoring is leak-free '
+            f'(random calls score ~0); real names and ranks fill in as logged calls accrue live.</p>'
+        )
+
     media = state.digests.get("media-watch", {"empty": True})
     media_body = ""
     if not media.get("empty"):
@@ -597,7 +625,7 @@ def render_dashboard(state) -> str:
     nav = "".join(
         f'<a href="#{a}">{lbl}</a>' for a, lbl in [
             ("now", "Now"), ("markets", "Markets"), ("strategies", "Strategies"),
-            ("edges", "Edges"), ("trust", "Sports"), ("economy", "Economy"), ("record", "Track record"),
+            ("edges", "Edges"), ("voices", "Voices"), ("trust", "Sports"), ("economy", "Economy"), ("record", "Track record"),
         ]
     )
 
@@ -864,6 +892,8 @@ a,button,.kpi {{ transition:color .15s ease, border-color .15s ease, background 
 {_section("forward", "Out-of-sample", "Live study — watching it play out", "The stricter test: each run records what every strategy would buy today on a real basket, then marks it on the next run. Nothing is scored until real time passes, so it can't cheat.", forward_body)}
 
 {_section("edges", "Edge research", "Does any of it actually beat the market?", "Four leading-signal features — cross-venue lead-lag, attention acceleration, squeeze setup, and price recalibration — each scored out-of-sample under purged walk-forward validation. Positive skill beats the baseline; pure noise scores ~0 by construction.", edges_body)}
+
+{_section("voices", "Ahead of the curve", "Who's early and right?", "The people worth following aren't the loudest — they're the ones whose calls are right and land before the move. Each tracked voice is scored by Brier-skill (right) and timing lead (early), ranked by record and never by follower count. A voice making random calls scores ~0.", voices_body)}
 
 {_section("trust", "Calibration · Sports", "Are the predictions trustworthy?", "When the model says 30%, does it happen about 30% of the time? The closer the dots to the line, the more you can trust the numbers. Each sport is scored (Brier, lower is better) against simply guessing the base rate.", sports_body, "sports Elo")}
 

@@ -33,6 +33,7 @@ class LabState:
     movers: dict = field(default_factory=dict)  # structured trending stocks (sparklines + scores)
     market_edges: dict = field(default_factory=dict)  # structured cross-venue odds pairs
     edge_features: dict = field(default_factory=dict)  # Phase-1 edge features + their OOS skill
+    voices: dict = field(default_factory=dict)  # Phase-3 "ahead of the curve" voice leaderboard
 
 
 def _fit_tennis(seed: int = 0) -> dict:
@@ -219,7 +220,19 @@ def collect_lab_state(seed: int = 0) -> LabState:
     state.movers = read_latest_data("trending-stocks") or {"empty": True}
     state.market_edges = read_latest_data("market-divergence") or {"empty": True}
     state.edge_features = _edge_features()
+    state.voices = _voice_leaderboard(state.generated)
     return state
+
+
+def _voice_leaderboard(generated: str) -> dict:
+    """The 'ahead of the curve' voice leaderboard, dated to this run (synthetic
+    demonstration until live calls accrue — the engine + guarantees are real)."""
+    try:
+        from ..media.voices import voice_leaderboard_report
+
+        return voice_leaderboard_report(seed=11, as_of=str(generated)[:10])
+    except Exception:  # pragma: no cover - defensive
+        return {"rows": []}
 
 
 def _edge_features() -> dict:
