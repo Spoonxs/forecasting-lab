@@ -50,3 +50,16 @@ Thumbs.db
 .idea/
 .vscode/
 *.swp
+
+# vendored reference repo (not part of this project)
+LangAlpha-main/
+
+# design-reference: keep the .md analysis docs, exclude captured binaries
+# (third-party copyrighted screenshots/video + repo bloat — local reference only)
+design-reference/**/*.png
+design-reference/**/*.jpg
+design-reference/**/*.jpeg
+design-reference/**/*.avif
+design-reference/**/*.webp
+design-reference/**/*.gif
+design-reference/**/*.mp4
