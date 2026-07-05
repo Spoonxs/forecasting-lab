@@ -97,6 +97,59 @@ def test_mandate_desk_notes_render_violations_and_skips_verbatim():
     assert "a decision, not an order" in html
 
 
+# --------------------------------------------- P5 commit B: the receipts tape
+def test_event_feed_rows_carry_their_receipts():
+    ledger = {"empty": False, "skipped": 0, "n_total": 3, "snapshots": [
+        _snap("r1", 100_000.0, fills=2, inputs_sha256="abcdef0123456789deadbeef"),
+        _snap("r2", 100_200.0, halted=True, notes=["kill switch: HALT"]),
+        _snap("r3", 100_100.0,
+              proposal_queued={"from_version": "v0", "changes": {"NVDA": 0.9}, "approved": False}),
+    ]}
+    html = render_terminal(_state([], ledger=ledger))
+    # every row names its run and its receipt — hash present and absent paths
+    assert "abcdef012345" in html and "content-hashed and replayable" in html
+    assert "no audit record" in html  # r2/r3 have no hash — said out loud
+    # kinds + the never-auto-applied proposal
+    assert 'data-ev="fill"' in html and 'data-ev="halt"' in html and 'data-ev="proposal"' in html
+    assert "approved=false" in html and "never auto-applied" in html
+    # filters are server-rendered buttons; rows are in the HTML without JS
+    assert 'data-ev-filter' in html and ">Halts<" in html
+    assert "r1" in html and "r2" in html and "r3" in html
+
+
+def test_catch_me_up_sums_match_the_snapshots():
+    ledger = {"empty": False, "skipped": 0, "n_total": 4, "snapshots": [
+        _snap("r1", 100_000.0, fills=2),
+        _snap("r2", 101_000.0, fills=1, forecast_ids=[7]),
+        _snap("r3", 102_000.0, halted=True, notes=["mandate BLOCK: over cap"],
+              mandate={"status": "block", "violations": ["over cap"], "warnings": [], "skipped": []}),
+        _snap("r4", 102_000.0),
+    ]}
+    html = render_terminal(_state([], ledger=ledger))
+    assert "Catch me up" in html
+    assert "4 run(s)" in html and "+2.00%" in html  # 100k -> 102k
+    assert "3 fill(s)" in html
+    assert "1 halt(s)" in html and "mandate BLOCK: over cap" in html
+    assert "1 mandate block(s)" in html
+    assert "forecasts logged for scoring: 7" in html
+    # honest zeros when nothing happened
+    quiet = {"empty": False, "skipped": 0, "n_total": 1, "snapshots": [_snap("r1", 100_000.0)]}
+    quiet_html = render_terminal(_state([], ledger=quiet))
+    assert "0 fill(s)" in quiet_html and "no guardrail fired" in quiet_html
+
+
+def test_desk_sees_the_same_gate_as_the_public_board():
+    state = _state([])
+    state.arena = {"gate": {"k": 5, "survivors": [], "hold": True, "benchmark": "buy & hold"},
+                   "crowding": {"mean_pairwise_corr": 0.61, "crowded": True, "n_variants": 5}}
+    html = render_terminal(state)
+    assert "RISK READ" in html and "5 candidates" in html
+    assert "100% buy &amp; hold" in html
+    assert "crowding +0.61 (crowded)" in html
+    # no arena state -> no gate line, no guessing
+    assert "RISK READ" not in render_terminal(_state([]))
+
+
 def test_load_ledger_is_defensive(tmp_path):
     path = tmp_path / "ledger.jsonl"
     assert load_ledger(path) == {"empty": True}  # missing file

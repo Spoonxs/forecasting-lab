@@ -171,6 +171,100 @@ def _mandate_card(ledger: dict) -> str:
             f'the execution layer ever sees it.</p></div>')
 
 
+def _event_kind(snap: dict) -> str:
+    if snap.get("halted"):
+        return "halt"
+    if snap.get("proposal_queued", {}).get("changes"):
+        return "proposal"
+    if int(snap.get("fills", 0) or 0) > 0:
+        return "fill"
+    return "run"
+
+
+def _receipt(snap: dict) -> str:
+    sha = snap.get("inputs_sha256")
+    if sha:
+        return (f'<span class="rcpt" title="this decision&#39;s exact inputs are '
+                f'content-hashed and replayable (V8 audit trail)">&#9782; {_esc(str(sha)[:12])}</span>')
+    return '<span class="rcpt none">no audit record</span>'
+
+
+def _event_feed(ledger: dict) -> str:
+    """The claim-tape mechanic: every event carries its receipts — run id + the
+    audit hash when the snapshot has one, "no audit record" said out loud when
+    it doesn't. Filter buttons are server-rendered; rows are visible without JS."""
+    if ledger.get("empty"):
+        return '<p class="empty">the tape starts with the first ledger snapshot</p>'
+    rows = []
+    for snap in reversed(ledger["snapshots"]):
+        kind = _event_kind(snap)
+        bits = [f'<b>{_esc(snap.get("run_id", "?"))}</b>',
+                f'equity ${float(snap.get("equity", 0)):,.0f}',
+                f'{int(snap.get("fills", 0) or 0)} fill(s)']
+        if snap.get("halted"):
+            note = next((str(n) for n in snap.get("notes", [])), "halted")
+            bits.append(f'<span class="ev-halt">{_esc(note)}</span>')
+        prop = snap.get("proposal_queued") or {}
+        if prop.get("changes"):
+            approved = bool(prop.get("approved", False))
+            bits.append(f'<span class="ev-prop">proposal queued: {_esc(json.dumps(prop["changes"]))} '
+                        f'· approved={str(approved).lower()} — never auto-applied</span>')
+        if snap.get("forecast_ids"):
+            bits.append(f'forecasts logged: {_esc(",".join(str(i) for i in snap["forecast_ids"]))}')
+        rows.append(f'<li data-ev="{kind}"><span class="evk">{kind}</span> '
+                    f'{" · ".join(bits)} {_receipt(snap)}</li>')
+    filters = ('<div class="evfilters" data-ev-filter>'
+               '<button data-kind="all" class="on">All</button>'
+               '<button data-kind="fill">Fills</button>'
+               '<button data-kind="halt">Halts</button>'
+               '<button data-kind="proposal">Proposals</button></div>')
+    return filters + f'<ul class="evfeed">{"".join(rows)}</ul>'
+
+
+def _catch_me_up(ledger: dict) -> str:
+    """Since-you-last-looked, server-rendered and honest about zeros."""
+    if ledger.get("empty"):
+        return ""
+    snaps = ledger["snapshots"]
+    first_eq, last_eq = float(snaps[0].get("equity", 0)), float(snaps[-1].get("equity", 0))
+    move = (last_eq / first_eq - 1.0) if first_eq else 0.0
+    fills = sum(int(s.get("fills", 0) or 0) for s in snaps)
+    halts = [s for s in snaps if s.get("halted")]
+    blocks = sum(1 for s in snaps if (s.get("mandate") or {}).get("status") == "block")
+    fids = [str(i) for s in snaps for i in (s.get("forecast_ids") or [])]
+    lines = [
+        f"<li>{len(snaps)} run(s) on the tape; equity moved "
+        f'<b style="color:{_c(move)}">{_pct(move)}</b> across them</li>',
+        f"<li>{fills} fill(s) executed — every one idempotent and inside the caps</li>",
+        f"<li>{len(halts)} halt(s)" + (
+            ": " + _esc(next(iter(str(n) for n in halts[-1].get("notes", [])), "see the tape"))
+            if halts else " — no guardrail fired") + "</li>",
+        f"<li>{blocks} mandate block(s)</li>",
+    ]
+    if fids:
+        lines.append(f"<li>forecasts logged for scoring: {_esc(', '.join(fids[-8:]))}</li>")
+    return ('<details class="catchup"><summary>Catch me up</summary>'
+            f'<ul>{"".join(lines)}</ul></details>')
+
+
+def _gate_line(arena: dict) -> str:
+    """The same gate the public page shows — the desk sees what the board sees."""
+    gate = (arena or {}).get("gate") or {}
+    if not gate:
+        return ""
+    if gate.get("hold"):
+        verdict = f'0 survive &#8594; stated allocation 100% {_esc(gate.get("benchmark", "benchmark"))}'
+    else:
+        verdict = f'{len(gate.get("survivors", []))} survive: {_esc(", ".join(gate.get("survivors", [])))}'
+    crowd = (arena or {}).get("crowding") or {}
+    crowd_txt = ""
+    if crowd:
+        crowd_txt = (f' &#183; crowding {crowd.get("mean_pairwise_corr", 0):+.2f}'
+                     + (" (crowded)" if crowd.get("crowded") else ""))
+    return (f'<div class="gate">RISK READ — the gate: {gate.get("k", 0)} candidates &#183; '
+            f'deflated-Sharpe / PBO / fleet-FDR &#183; {verdict}{crowd_txt}</div>')
+
+
 def _chat(agent: dict, as_of: str) -> str:
     msgs = []
 
@@ -217,6 +311,9 @@ def render_terminal(state) -> str:
                    f'{pill_label}<span class="pwhy">{_esc(pill_why)}</span></div>')
     heartbeat = _heartbeat(ledger)
     mandate_card = _mandate_card(ledger)
+    catchup = _catch_me_up(ledger)
+    gate_line = _gate_line(getattr(state, "arena", {}) or {})
+    event_feed = _event_feed(ledger)
 
     if not picks:
         board = '<p class="empty">The desk hasn\'t opened any paper positions yet — it acts on the next data scan.</p>'
@@ -265,6 +362,27 @@ header{{padding:20px 0 14px;display:flex;align-items:flex-end;gap:26px;flex-wrap
 .mandate .mlist{{list-style:none;margin:2px 0 8px;font:500 11.5px/1.6 ui-monospace,Consolas,monospace}}
 .mandate .m-block{{color:var(--dn)}} .mandate .m-warn{{color:#e8b23e}} .mandate .m-skip{{color:var(--mut)}}
 .badge.ok{{color:var(--up)}} .badge.fill{{color:var(--dn)}} .badge.idea{{color:#6ea8fe}}
+.catchup{{margin:12px 0 0;background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:10px 14px}}
+.catchup summary{{cursor:pointer;font:700 12px/1 ui-sans-serif;letter-spacing:.07em;text-transform:uppercase;color:var(--mut)}}
+.catchup ul{{list-style:none;margin-top:9px}}
+.catchup li{{font:500 12.5px/1.7 ui-monospace,Consolas,monospace;color:#c7ccd4}}
+.gate{{margin-top:12px;font:600 12px/1.6 ui-monospace,Consolas,monospace;color:var(--mut);
+  border:1px solid var(--line);border-left:3px solid #6ea8fe;border-radius:6px;padding:9px 12px;background:var(--panel)}}
+.evfilters{{display:inline-flex;gap:4px;margin-bottom:10px}}
+.evfilters button{{font:600 11px/1 ui-sans-serif;letter-spacing:.04em;text-transform:uppercase;color:var(--mut);
+  background:var(--panel);border:1px solid var(--line);border-radius:6px;padding:7px 11px;cursor:pointer}}
+.evfilters button.on{{color:var(--ink);border-color:#3a4356}}
+.evfeed{{list-style:none;border-top:1px solid var(--line)}}
+.evfeed li{{display:flex;flex-wrap:wrap;gap:6px 10px;align-items:baseline;padding:9px 0;
+  border-bottom:1px solid var(--line);font:500 12.5px/1.6 ui-monospace,Consolas,monospace;color:#c7ccd4}}
+.evfeed .evk{{flex:none;font:700 9.5px/1 ui-sans-serif;letter-spacing:.06em;text-transform:uppercase;
+  color:var(--mut);background:#1c222c;border-radius:4px;padding:4px 7px}}
+.evfeed li[data-ev="halt"] .evk{{color:var(--dn)}} .evfeed li[data-ev="fill"] .evk{{color:var(--up)}}
+.evfeed li[data-ev="proposal"] .evk{{color:#6ea8fe}}
+.evfeed .ev-halt{{color:var(--dn)}} .evfeed .ev-prop{{color:#9db6e8}}
+.rcpt{{margin-left:auto;font:600 10.5px/1 ui-monospace;color:#6ea8fe;background:#141b2a;
+  border:1px solid #263352;border-radius:5px;padding:4px 7px;cursor:help}}
+.rcpt.none{{color:var(--mut);background:#1a1e26;border-color:var(--line)}}
 h2{{font:700 13px/1 ui-sans-serif;letter-spacing:.09em;text-transform:uppercase;color:var(--mut);margin:22px 0 12px}}
 .desks{{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}}
 .desk{{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:13px}}
@@ -303,6 +421,8 @@ h2{{font:700 13px/1 ui-sans-serif;letter-spacing:.09em;text-transform:uppercase;
 </header>
 
 {heartbeat}
+{catchup}
+{gate_line}
 
 <h2>The desk</h2>
 <div class="desks">{desks}{mandate_card}</div>
@@ -312,7 +432,27 @@ h2{{font:700 13px/1 ui-sans-serif;letter-spacing:.09em;text-transform:uppercase;
   <div><h2>Firm chat</h2><div class="chat">{chat}</div></div>
 </div>
 
+<h2>The run tape · every event with its receipts</h2>
+{event_feed}
+
 <div class="foot">A paper trading desk on live data — stock picks from the trending scan and YES/NO
 positions on live Kalshi/Polymarket by recalibrated fair value. Real data, paper marks that accrue
 over runs; no edge is claimed until the promotion gate clears. · <a href="index.html">← research briefing</a></div>
-</div></body></html>"""
+</div>
+<script>
+(function(){{
+  document.querySelectorAll('[data-ev-filter]').forEach(function(g){{
+    g.querySelectorAll('button').forEach(function(b){{
+      b.addEventListener('click', function(){{
+        g.querySelectorAll('button').forEach(function(x){{x.classList.remove('on');}});
+        b.classList.add('on');
+        var kind=b.getAttribute('data-kind');
+        document.querySelectorAll('.evfeed li').forEach(function(li){{
+          li.style.display=(kind==='all'||li.getAttribute('data-ev')===kind)?'':'none';
+        }});
+      }});
+    }});
+  }});
+}})();
+</script>
+</body></html>"""
