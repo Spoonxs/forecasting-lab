@@ -254,6 +254,7 @@ def _edge_features() -> dict:
     from ..markets.leadlag import leadlag_skill_report
     from ..ml.factors import residual_momentum_skill_report
     from ..signals.attention import attention_skill_report
+    from ..signals.deception import deception_skill_report
     from ..signals.squeeze import squeeze_skill_report
 
     try:
@@ -283,6 +284,10 @@ def _edge_features() -> dict:
                  "skill": residual_momentum_skill_report(seed=7)["oos_rank_ic_residual"],
                  "what": "Rank names by factor-residual drift, not raw returns (OOS rank IC, purged CV).",
                  "status": "synthetic demonstration (real factor exposures are a later data source)"},
+                {"name": "Earnings-call deception language (L-Z 2012)",
+                 "skill": deception_skill_report(seed=7)["brier_skill_vs_base"],
+                 "what": "Lexical deception markers in executive narratives — classification skill, NOT a return edge.",
+                 "status": "synthetic demonstration (real transcripts are a later data source)"},
             ],
         }
     except Exception:  # pragma: no cover - defensive
