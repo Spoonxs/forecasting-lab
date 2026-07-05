@@ -6,7 +6,8 @@ prediction gets a probability; resolved ones get scored over time. See
 ``project-forecasting-lab.md``.
 """
 
+from .audit import AuditTrail, canonical_json, content_hash
 from .log import ForecastLog
 from .resolve import venue_resolver
 
-__all__ = ["ForecastLog", "venue_resolver"]
+__all__ = ["ForecastLog", "venue_resolver", "AuditTrail", "canonical_json", "content_hash"]

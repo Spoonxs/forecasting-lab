@@ -87,3 +87,55 @@ def recalibration_skill_report(seed: int = 0, n: int = 6000, bias: float = 1.3, 
     )
     return {"feature": "favorite-longshot recalibration", "n": n, "bias": bias,
             "brier_skill_vs_market": round(skill, 4), "baseline": "raw market price"}
+
+
+def risk_awareness_report(seed: int = 0, n: int = 6000, effect: float = 1.0) -> dict:
+    """The V8 hypothesis test: does a rec's stated risk-acknowledgement predict
+    outcomes NEGATIVELY ("legible risks are priced in" — the 547-recs finding)?
+
+    Synthetic recs: each has a base probability and a risk-acknowledgement flag.
+    With ``effect>0`` the world makes risk-aware recs land BELOW their stated
+    probability; with ``effect=0`` the flag is pure noise. Per fold, the shift is
+    fit on the train block only and applied OOS — the honest answer is skill > 0
+    exactly when the effect is planted, ~0 when it isn't (pinned in tests).
+    """
+    rng = np.random.default_rng(seed)
+    base_p = rng.uniform(0.25, 0.75, n)
+    risk_ack = (rng.uniform(size=n) < 0.5).astype(float)
+    true_p = np.clip(base_p - effect * 0.12 * risk_ack, 0.01, 0.99)
+    y = (rng.uniform(size=n) < true_p).astype(float)
+    period = (np.arange(n) // max(1, n // 20)).astype(int)
+    df = pd.DataFrame({"period": period, "prob": base_p, "risk_ack": risk_ack, "y": y})
+
+    # walk_forward_skill's fit_transform only sees the prob column, so run the
+    # purged split by hand — the fitted shift needs the risk_ack column OOS too.
+    from ..ml.cv import PurgedWalkForwardCV
+
+    cv = PurgedWalkForwardCV(n_splits=4, horizon=1)
+    ys, model, ref = [], [], []
+    times = df["period"].to_numpy()
+    fitted_shift = 0.0
+    for train_idx, test_idx in cv.split(times):
+        train, test = df.iloc[train_idx], df.iloc[test_idx]
+        ack = train["risk_ack"].to_numpy(dtype=float)
+        resid = train["y"].to_numpy(dtype=float) - train["prob"].to_numpy(dtype=float)
+        shift = float(resid[ack == 1].mean()) if (ack == 1).any() else 0.0
+        fitted_shift = shift
+        adjusted = np.clip(
+            test["prob"].to_numpy(dtype=float)
+            + shift * test["risk_ack"].to_numpy(dtype=float),
+            0.01, 0.99,
+        )
+        ys.append(test["y"].to_numpy(dtype=float))
+        model.append(adjusted)
+        ref.append(test["prob"].to_numpy(dtype=float))
+    from .skill import brier_skill_vs
+
+    skill = brier_skill_vs(np.concatenate(ys), np.concatenate(model), np.concatenate(ref))
+    return {
+        "hypothesis": "risk-awareness predicts outcomes negatively (legible risks priced in)",
+        "n": n,
+        "effect": effect,
+        "fitted_shift": round(fitted_shift, 4),  # negative when the effect is real
+        "brier_skill_vs_base_prob": round(float(skill), 4),
+    }

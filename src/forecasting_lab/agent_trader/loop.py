@@ -59,8 +59,16 @@ def run_once(*, ticker: str, judge: Judge, strategy: Strategy, broker: PaperBrok
              fetchers: dict | None = None, current_version: str = "v0",
              ledger_path: Path | str | None = None,
              mandate_rules: list[Rule] | None = None,
-             sectors: dict[str, str] | None = None) -> dict:
-    """One unattended cycle → a snapshot. Idempotent on ``run_id``; the LLM never trades."""
+             sectors: dict[str, str] | None = None,
+             audit=None, forecast_log=None, pick_builder=None) -> dict:
+    """One unattended cycle → a snapshot. Idempotent on ``run_id``; the LLM never trades.
+
+    V8 hooks: ``audit`` (a ``calibration_log.AuditTrail``) persists the exact
+    as-of inputs behind this cycle, keyed by ``run_id``, and the snapshot carries
+    their hash; ``pick_builder(brief) -> [Prediction]`` + ``forecast_log`` (a
+    ``ForecastLog``) file every pick into the public Brier-scored log so it
+    auto-resolves and scores against base rate like everything else.
+    """
     # 1. the broker is the source of truth (survive a crash between submit and DB-write)
     reconciled = reconcile_from_broker(broker)
 
@@ -111,6 +119,35 @@ def run_once(*, ticker: str, judge: Judge, strategy: Strategy, broker: PaperBrok
             "warnings": mandate_report.warnings,
             "skipped": mandate_report.skipped,
         }
+
+    # V8a: the exact as-of inputs behind this cycle, persisted + hashed
+    if audit is not None:
+        inputs = {
+            "run_id": run_id,
+            "ticker": ticker,
+            "prices": {k: float(v) for k, v in prices.items()},
+            "targets": {k: float(v) for k, v in targets.items()},
+            "version_live": current_version,
+            "mandate_status": None if mandate_report is None else mandate_report.status,
+        }
+        snapshot["inputs_sha256"] = audit.record(run_id, inputs, on=run_id)
+
+    # V8b: picks flow into the public Brier-scored forecast log
+    if forecast_log is not None and pick_builder is not None:
+        ids = []
+        for pick in pick_builder(brief):
+            note = f"run:{run_id}"
+            if "inputs_sha256" in snapshot:
+                note += f" audit:{snapshot['inputs_sha256'][:12]}"
+            ids.append(forecast_log.record(
+                question=pick.label or f"{ticker} pick",
+                prob=float(pick.probability),
+                venue="agent-desk",
+                market_prob=pick.market_implied_prob,
+                notes=note,
+            ))
+        snapshot["forecast_ids"] = ids
+
     if ledger_path is not None:
         append_snapshot(ledger_path, snapshot)
     return snapshot
