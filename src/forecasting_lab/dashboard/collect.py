@@ -252,6 +252,7 @@ def _edge_features() -> dict:
     synthetic demonstration that the feature is leak-free and extracts real signal —
     live skill accrues as data fills)."""
     from ..markets.leadlag import leadlag_skill_report
+    from ..ml.factors import residual_momentum_skill_report
     from ..signals.attention import attention_skill_report
     from ..signals.squeeze import squeeze_skill_report
 
@@ -278,6 +279,10 @@ def _edge_features() -> dict:
                  "skill": recal["brier_skill_vs_market"],
                  "what": "Corrects the price bias: longshots overpriced, favorites underpriced.",
                  "status": "live on market picks (default correction until fit on resolutions)"},
+                {"name": "Residual momentum (factor-neutral)",
+                 "skill": residual_momentum_skill_report(seed=7)["oos_rank_ic_residual"],
+                 "what": "Rank names by factor-residual drift, not raw returns (OOS rank IC, purged CV).",
+                 "status": "synthetic demonstration (real factor exposures are a later data source)"},
             ],
         }
     except Exception:  # pragma: no cover - defensive

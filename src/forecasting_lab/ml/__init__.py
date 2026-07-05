@@ -6,6 +6,13 @@ walk-forward CV, and judge on calibration — not accuracy. See ``ml-system-desi
 """
 
 from .cv import PurgedWalkForwardCV
+from .factors import (
+    constrained_lstsq,
+    factor_residuals,
+    mad_winsorize_zscore,
+    residual_momentum,
+    walk_forward_rank_ic,
+)
 from .features import cross_sectional_rank, cross_sectional_zscore, lag_features
 from .labels import forward_return, triple_barrier
 from .ranker import CrossSectionalRanker
@@ -18,4 +25,9 @@ __all__ = [
     "forward_return",
     "triple_barrier",
     "CrossSectionalRanker",
+    "constrained_lstsq",
+    "factor_residuals",
+    "mad_winsorize_zscore",
+    "residual_momentum",
+    "walk_forward_rank_ic",
 ]
