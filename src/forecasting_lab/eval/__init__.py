@@ -7,7 +7,9 @@ time. See ``project-forecasting-lab.md`` and ``ml-system-design.md``.
 """
 
 from .honest_stats import (
+    alpha_vs_benchmark,
     cluster_outcomes,
+    format_metric,
     independent_bets,
     shrunk_win_rate,
     win_rate_zscore,
@@ -36,4 +38,6 @@ __all__ = [
     "cluster_outcomes",
     "win_rate_zscore",
     "independent_bets",
+    "alpha_vs_benchmark",
+    "format_metric",
 ]

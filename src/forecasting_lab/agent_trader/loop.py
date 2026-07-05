@@ -22,12 +22,28 @@ from collections.abc import Callable
 from pathlib import Path
 
 from .brief import DailyBrief, build_brief
-from .execution import ExecutionLayer, PaperBroker, RiskLimits, reconcile_from_broker
+from .execution import (
+    ExecutionLayer,
+    PaperBroker,
+    RebalanceResult,
+    RiskLimits,
+    reconcile_from_broker,
+)
+from .mandate import Rule, check_mandate
 from .team import Judge, run_cycle
 
 # The approved, deterministic strategy: brief -> target weights. Injected (this is the
 # thing the LLM proposes changes to, never the LLM itself).
 Strategy = Callable[[DailyBrief], dict]
+
+
+def _current_weights(broker: PaperBroker, prices: dict[str, float]) -> dict[str, float]:
+    equity = broker.equity(prices)
+    if equity <= 0:
+        return {}
+    return {
+        s: (p.qty * prices.get(s, p.avg_price)) / equity for s, p in broker.positions.items()
+    }
 
 
 def append_snapshot(path: Path | str, snapshot: dict) -> Path:
@@ -41,7 +57,9 @@ def append_snapshot(path: Path | str, snapshot: dict) -> Path:
 def run_once(*, ticker: str, judge: Judge, strategy: Strategy, broker: PaperBroker,
              limits: RiskLimits, prices: dict[str, float], run_id: str,
              fetchers: dict | None = None, current_version: str = "v0",
-             ledger_path: Path | str | None = None) -> dict:
+             ledger_path: Path | str | None = None,
+             mandate_rules: list[Rule] | None = None,
+             sectors: dict[str, str] | None = None) -> dict:
     """One unattended cycle → a snapshot. Idempotent on ``run_id``; the LLM never trades."""
     # 1. the broker is the source of truth (survive a crash between submit and DB-write)
     reconciled = reconcile_from_broker(broker)
@@ -55,10 +73,24 @@ def run_once(*, ticker: str, judge: Judge, strategy: Strategy, broker: PaperBrok
     # 4. the APPROVED deterministic strategy decides target weights (not the LLM)
     targets = strategy(brief)
 
-    # 5. execution layer: guardrails as refusing tools + idempotent fills
-    result = ExecutionLayer(broker, limits, prices).rebalance(targets, run_id)
+    # 5. the mandate check — a BLOCK means no rebalance happens at all
+    mandate_report = None
+    if mandate_rules:
+        mandate_report = check_mandate(
+            targets, mandate_rules,
+            current_weights=_current_weights(broker, prices), sectors=sectors,
+        )
 
-    # 6. mark + snapshot
+    # 6. execution layer: guardrails as refusing tools + idempotent fills
+    if mandate_report is not None and mandate_report.blocked:
+        result = RebalanceResult(
+            [], halted=True,
+            notes=[f"mandate BLOCK: {v}" for v in mandate_report.violations],
+        )
+    else:
+        result = ExecutionLayer(broker, limits, prices).rebalance(targets, run_id)
+
+    # 7. mark + snapshot
     equity = broker.mark(prices)
     snapshot = {
         "run_id": run_id,
@@ -72,6 +104,13 @@ def run_once(*, ticker: str, judge: Judge, strategy: Strategy, broker: PaperBrok
                             "changes": proposal.changes, "approved": proposal.approved},
         "notes": result.notes,
     }
+    if mandate_report is not None:
+        snapshot["mandate"] = {
+            "status": mandate_report.status,
+            "violations": mandate_report.violations,
+            "warnings": mandate_report.warnings,
+            "skipped": mandate_report.skipped,
+        }
     if ledger_path is not None:
         append_snapshot(ledger_path, snapshot)
     return snapshot

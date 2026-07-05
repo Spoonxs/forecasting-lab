@@ -84,3 +84,30 @@ def win_rate_zscore(
 def independent_bets(clusters: Sequence[Hashable]) -> int:
     """How many independent bets a fill log actually contains."""
     return len(set(clusters))
+
+
+def alpha_vs_benchmark(
+    value_now: float | None,
+    value_entry: float | None,
+    benchmark_now: float | None,
+    benchmark_entry: float | None,
+) -> float | None:
+    """Excess return vs a benchmark anchored at the SAME entry date — or ``None``.
+
+    Alpha is only computable point-in-time: it needs the benchmark's value on the
+    day the position was entered. Without that stored anchor the honest answer is
+    ``None`` (rendered "n/a"), never a number reconstructed after the fact.
+    """
+    anchors = (value_now, value_entry, benchmark_now, benchmark_entry)
+    if any(a is None for a in anchors):
+        return None
+    if value_entry == 0 or benchmark_entry == 0:
+        return None
+    ret = float(value_now) / float(value_entry) - 1.0
+    bench = float(benchmark_now) / float(benchmark_entry) - 1.0
+    return ret - bench
+
+
+def format_metric(value: float | None, fmt: str = "{:+.2%}") -> str:
+    """Render a metric, or "n/a" when it could not be honestly computed."""
+    return "n/a" if value is None else fmt.format(value)
