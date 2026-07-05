@@ -132,7 +132,7 @@ preserved in all cases; treat "(NN)" citations as approximate.
 | 12 repos | all cloned + analyzed (incl. Temple-Stuart, GaurabAryal, mkash25 this pass); Temple-Stuart full tree restored |
 | Live sites | Stock Taper/Intel Desk/Rallies (walked earlier, Rallies logged-in, data grade A−); engo re-verified live; openfactor R2 re-fetched; margincall/freetradejournal captured; **crowdintel down/flagged** |
 | YouTube ×3 | transcripts fetched + read; titles verified; 1 mislabel corrected |
-| LinkedIn post | captured + analyzed (first time) — the 59-0 claim |
+| LinkedIn post | captured IN FULL + its 1 comment — the 59-0 claim; tail adds: 3 Kalshi accounts in parallel off one ESPN feed (122 trades total), encrypted credentials, a **private fork** (better fill reconciliation vs Kalshi API, compounding sizing, SQLite→Supabase); the sole comment (a derivatives trader) notes the contracts price like deep-ITM options (delta ≈ the favorite-longshot structure) |
 | Pastebins ×2 | analyzed (first time) — pre-rewrite scanner, GPT-4o-mini scorer, author's own `use_cached=True` |
 | Academic paper | abstract verified claim-by-claim |
 | Medium writeup | verified number-by-number |
