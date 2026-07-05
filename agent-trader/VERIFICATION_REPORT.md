@@ -137,6 +137,36 @@ preserved in all cases; treat "(NN)" citations as approximate.
 | Academic paper | abstract verified claim-by-claim |
 | Medium writeup | verified number-by-number |
 
+## 6. Gap-closure addendum (same day, alternate means)
+
+Four of the §5 residual gaps were subsequently CLOSED:
+- **klaus-kode's "missing" `workflow_tools/` was the same Windows truncated-checkout bug
+  as Temple-Stuart** — `git reset --hard` with `core.longpaths` restored the full tree
+  (73 → **406 files**; `workflow_tools/{core,phases,integrations}` all present). The
+  prior "core missing from clone" caveat is void; the repo is fully inspectable.
+- **crowdintel.xyz recovered via the Wayback Machine** (snapshot 2026-05-11, the only
+  capture). The site had productized into: whale alerts <30s, insider detection (fresh
+  wallets, counter-consensus at extreme odds, pre-resolution timing), cluster analysis,
+  wallet dossiers, trending markets, an "Ask Pulse" chat agent — and notably a
+  **"Self-Improving Engine": "markets resolve, alerts get graded, signals that predict
+  winners grow stronger, signals that miss get dampened"** — an outcome-graded signal
+  loop, the closest in-the-wild echo of our track-record thesis. The site died within
+  ~2 months of that snapshot (now SSL-broken + safe-browsing-flagged).
+- **Thread 15's `[removed]` comments recovered via arctic_shift** (25 comments): mostly
+  repo-requests and chatter; nothing verdict-changing; confirms the "nailed it for a
+  week" attribution. (Pullpush has no 2025+ coverage.)
+- **The paper's FULL TEXT obtained** (SciSpace mirror of JAR 2012 via Firecrawl; SSRN
+  hard-403s even stealth proxies): 29,663 FactSet transcripts; three restatement-labeling
+  schemes (material-weakness/auditor-change/late-filing/8-K; Glass-Lewis; Hennes-Leone-
+  Miller irregularities); separate CEO/CFO models; **AUC vs a random classifier with a
+  corrected resampled t-test**; 6–16%-above-random confirmed in the body. Implementation-
+  grade source for a future `signals/deception` (word categories in its §3). Saved at
+  scratchpad `lz2012_fc.md`.
+- **LinkedIn**: full post + sole comment already captured (see §5 ledger).
+
+Still open (and genuinely unclosable): deep collapsed sub-reply stubs in the biggest
+threads, Rallies' closed real-time backend, and live crowdintel (site dead).
+
 **Bottom line:** the research program's conclusions all stand — no verdict in any table
 flips. The corrections are about precision (wrong examples, smeared citations, shaved
 caveats, one licence/availability error) plus genuinely new material (Temple-Stuart's
