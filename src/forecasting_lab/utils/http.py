@@ -64,6 +64,9 @@ class HttpClient:
     def get_json(self, url: str, **kwargs: Any) -> Any:
         return self.get(url, **kwargs).json()
 
+    def get_text(self, url: str, **kwargs: Any) -> str:
+        return self.get(url, **kwargs).text
+
     def post(self, url: str, **kwargs: Any) -> requests.Response:
         kwargs.setdefault("timeout", self.timeout)
         resp = self.session.post(url, **kwargs)
