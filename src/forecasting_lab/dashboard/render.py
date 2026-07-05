@@ -1,13 +1,15 @@
-"""Render the lab state into one interactive HTML page — an editorial briefing.
+"""Render the lab state into one interactive HTML page — the almanac desk view.
 
-Design: a research *newspaper*, not a SaaS dashboard. Warm off-white paper, a
-serif body/headline (Charter/Georgia — system fonts, always render), sans for
-labels/nav, mono for figures/dates/tickers. A masthead with a spelled-out
-dateline + issue number; kickers over every section; hairline rules instead of
-shadows; tabular figures and real U+2212 minus signs. Still a *tool* underneath:
-sticky section nav, a "what's moving now" board with price sparklines, live
-prediction-market odds side by side, sortable tables, an "updated N ago" clock.
-Self-contained (inline CSS/SVG + a little vanilla JS); content never JS-gated.
+Design (MASTER_PLAN §2): **Stock Taper skin × Rallies layout**. Warm cream paper,
+white cards with hairlines, IBM Plex Mono throughout (ui-monospace fallback — no
+external font fetch), muted green/brick for up/down, uppercase eyebrow tags +
+heavy uppercase headings, one tiny hand-drawn inline-SVG mascot per section.
+Rallies supplies the structure: sticky feature-per-surface nav with scroll-spy,
+a peer strip over the movers, suggested-question chips, book tables, a filtered
+activity feed. Still a *tool* underneath: sparklines, live odds side by side,
+sortable tables, an "updated N ago" clock. Self-contained (inline CSS/SVG + a
+little vanilla JS); content never JS-gated; "going well / concerning" pairs and
+plain-English framing on every surface. Not financial advice, everywhere.
 """
 
 from __future__ import annotations
@@ -19,17 +21,17 @@ from ..eval.recalibration import default_fair_value
 from ..predictions import market_prediction, mover_prediction
 
 # ---------------------------------------------------------------- palette
-PAPER = "#FAF9F6"
+PAPER = "#FBF7EB"
 CARD = "#FFFFFF"
 INK = "#1E1C19"
 MUTED = "#6B6864"
 FAINT = "#9A958C"
-RULE = "#E5E1D8"
+RULE = "#E5E5E5"
 LINE = RULE  # alias
-ACCENT = "#0F766E"
-ACCENT_SOFT = "#EAF1EF"
-UP = "#0B6B3A"
-DOWN = "#B0281A"
+ACCENT = "#1D5C2E"
+ACCENT_SOFT = "#EAF2E4"
+UP = "#2F7D31"
+DOWN = "#C6392C"
 MINUS = "−"
 
 STRATEGY_COLORS = {
@@ -234,12 +236,63 @@ def _kpi(label: str, value: str, sub: str, tone: str = "", anchor: str = "") -> 
             f'<div class="kpi-val">{value}</div><div class="kpi-sub">{_esc(sub)}</div></{tag}>')
 
 
-def _section(anchor: str, kicker: str, title: str, explainer: str, body: str, source: str = "") -> str:
+# tiny hand-drawn inline-SVG mascots, one per surface (our own doodles — never
+# copied art). Simple stroke figures in the section's corner, aria-hidden.
+def _doodle(body: str) -> str:
+    return (f'<svg class="mascot" viewBox="0 0 44 44" aria-hidden="true" fill="none" '
+            f'stroke="{INK}" stroke-width="1.6" stroke-linecap="round">{body}</svg>')
+
+
+MASCOTS = {
+    "desk": _doodle('<rect x="8" y="14" width="28" height="18" rx="2"/><path d="M14 32v4h16v-4"/>'
+                    '<path d="M14 20h10M14 24h16"/><circle cx="31" cy="20" r="1.5" fill="#2F7D31" stroke="none"/>'),
+    "movers": _doodle('<path d="M7 32 L16 22 L23 27 L37 12"/><path d="M30 12h7v7"/>'),
+    "odds": _doodle('<path d="M22 8v28M12 14h20"/><path d="M12 14l-5 9h10zM32 14l-5 9h10z"/>'
+                    '<path d="M7 23a5 5 0 0 0 10 0M27 23a5 5 0 0 0 10 0"/>'),
+    "edges": _doodle('<circle cx="22" cy="22" r="13"/><circle cx="22" cy="22" r="7"/>'
+                     '<circle cx="22" cy="22" r="1.6" fill="#C6392C" stroke="none"/><path d="M22 4v6M22 34v6M4 22h6M34 22h6"/>'),
+    "arena": _doodle('<path d="M10 36V22M22 36V10M34 36V16"/><path d="M6 36h32"/>'
+                     '<circle cx="22" cy="7" r="2" fill="#2F7D31" stroke="none"/>'),
+    "scorecard": _doodle('<rect x="9" y="7" width="26" height="30" rx="2"/><path d="M14 14h10M14 20h16M14 26h13"/>'
+                         '<path d="M15 31l3 3 6-6"/>'),
+    "macro": _doodle('<rect x="7" y="16" width="30" height="20" rx="1"/><path d="M7 16 L22 7 L37 16"/>'
+                     '<path d="M13 22v8M22 22v8M31 22v8"/>'),
+    "watch": _doodle('<circle cx="18" cy="20" r="9"/><path d="M25 27 L36 38"/><path d="M14 20a4 4 0 0 1 4-4"/>'),
+    "sports": _doodle('<circle cx="22" cy="22" r="14"/><path d="M8 22h28M22 8a20 20 0 0 1 0 28M22 8a20 20 0 0 0 0 28"/>'),
+    "feed": _doodle('<path d="M9 12h26M9 20h26M9 28h18"/><circle cx="33" cy="30" r="4"/>'),
+}
+
+
+def _section(anchor: str, kicker: str, title: str, explainer: str, body: str,
+             source: str = "", mascot: str = "") -> str:
     src = f'<span class="src">{_esc(source)}</span>' if source else ""
+    art = MASCOTS.get(mascot, "")
     return (f'<section id="{anchor}" class="card reveal">'
             f'<div class="sec-head"><div><div class="kicker">{_esc(kicker)}</div>'
-            f'<h2>{_esc(title)}</h2></div>{src}</div>'
+            f'<h2>{_esc(title)}</h2></div>{src}{art}</div>'
             f'<p class="explain">{_esc(explainer)}</p>{body}</section>')
+
+
+def _well_concerning(preds) -> str:
+    """The Stock Taper 'What's going well? / What's concerning?' pair, derived
+    strictly from the picks' drivers (positive vs negative contributions) and
+    their caveats — plain English over the same evidence, never new claims."""
+    good: list[str] = []
+    bad: list[str] = []
+    for pred in preds:
+        name = _esc(pred.label.split()[0]) if pred.label else "pick"
+        for d in pred.drivers:
+            if abs(d.contribution) < 1e-9:
+                continue
+            line = f"<b>{name}</b> · {_esc(d.feature)} {_dfmt(d.feature, d.value)}"
+            (good if d.contribution > 0 else bad).append(line)
+    if not good and not bad:
+        return ""
+    good_html = "".join(f"<li>{g}</li>" for g in good[:5]) or "<li>nothing stands out today</li>"
+    bad_html = "".join(f"<li>{b}</li>" for b in bad[:5]) or "<li>no red flags in the drivers — the caveats still apply</li>"
+    return ('<div class="wellcon">'
+            f'<div class="wc-good"><h4>What&#8217;s going well?</h4><ul>{good_html}</ul></div>'
+            f'<div class="wc-bad"><h4>What&#8217;s concerning?</h4><ul>{bad_html}</ul></div></div>')
 
 
 def _stat(label: str, value: str, sub: str = "", big: bool = False) -> str:
@@ -319,12 +372,23 @@ def _mover_card(c: dict) -> str:
     )
 
 
+def _peer_strip(cards: list[dict]) -> str:
+    """Rallies-style peer strip: every scanned name as a scrolling chip with its move."""
+    chips = []
+    for c in cards[:16]:
+        ret = float(c.get("ret_5d", 0) or 0)
+        cls = "up" if ret >= 0 else "down"
+        chips.append(f'<a href="#now">{_esc(c["ticker"])} <b class="{cls}">{_pct(ret,1,signed=True)}</b></a>')
+    return f'<div class="peers">{"".join(chips)}</div>' if chips else ""
+
+
 def _movers_board(movers: dict) -> str:
     if movers.get("empty") or not movers.get("movers"):
         return _empty("The stock scan runs on the next update — it needs the live market feed. "
                       "Locally: flab-trending.")
     mom = movers.get("movers", [])[:8]
     fast = movers.get("fast", [])[:8]
+    peers = _peer_strip(mom + [c for c in fast if c["ticker"] not in {m["ticker"] for m in mom}])
     tabs = (
         '<div class="tabs" data-tab-group="movers">'
         '<button data-tab="mom" class="on">Steady climbers</button>'
@@ -333,7 +397,8 @@ def _movers_board(movers: dict) -> str:
     mom_html = '<div class="movers" data-tab-panel="mom">' + "".join(_mover_card(c) for c in mom) + "</div>"
     fast_html = '<div class="movers hidden" data-tab-panel="fast">' + "".join(_mover_card(c) for c in fast) + "</div>"
     note = "" if movers.get("reddit_ok") else '<p class="fine">Social-velocity (Reddit) is unavailable here; it feeds the fast-money score in the cloud.</p>'
-    return tabs + mom_html + fast_html + note
+    pair = _well_concerning([mover_prediction(c) for c in mom])
+    return peers + tabs + mom_html + fast_html + pair + note
 
 
 # ---------------------------------------------------------------- odds board
@@ -396,7 +461,15 @@ def _odds_board(edges: dict) -> str:
         if edges.get("n_kalshi") is not None:
             scanned = f" Scanned {edges.get('n_kalshi',0)} Kalshi + {edges.get('n_poly',0)} Polymarket markets."
         return _empty("The market feed returned no priced markets right now." + scanned)
-    return cross + live_html
+
+    # the going-well/concerning pair over the same evidence the cards show
+    preds = [market_prediction(e["event"], e.get("poly", 0), "Polymarket",
+                               gap=abs(float(e.get("kalshi", 0)) - float(e.get("poly", 0))),
+                               fair_value=default_fair_value(e.get("poly", 0)))
+             for e in (flagged or matched)[:6]]
+    preds += [market_prediction(m["event"], m["yes"], "Polymarket",
+                                fair_value=default_fair_value(m["yes"])) for m in poly[:4]]
+    return cross + live_html + _well_concerning(preds)
 
 
 # ---------------------------------------------------------------- sortable table
@@ -654,12 +727,46 @@ def render_dashboard(state) -> str:
             if content["table"]:
                 media_body += f"<h3>{_esc(heading)}</h3>" + _md_table(content["table"])
 
+    # Rallies IA: one crisp surface per job in the sticky nav
     nav = "".join(
-        f'<a href="#{a}">{lbl}</a>' for a, lbl in [
-            ("agent", "Agent desk"), ("now", "Now"), ("markets", "Markets"), ("strategies", "Strategies"),
-            ("edges", "Edges"), ("voices", "Voices"), ("trust", "Sports"), ("economy", "Economy"), ("record", "Track record"),
+        f'<a href="{href}">{lbl}</a>' for href, lbl in [
+            ("#today", "Today"), ("#now", "Movers"), ("#markets", "Odds"), ("#edges", "Edges"),
+            ("#strategies", "Arena"), ("scorecard.html", "Scorecard"), ("#agent", "Desk"),
+            ("#economy", "Macro"), ("#voices", "Watch"),
         ]
     )
+
+    qchips = (
+        '<div class="qchips">'
+        '<a href="#edges">Is anything squeezing?</a>'
+        '<a href="#agent">What is the desk holding?</a>'
+        '<a href="#markets">Where is the money betting?</a>'
+        '<a href="#trust">Can I trust these numbers?</a>'
+        '<a href="scorecard.html">How right have we been?</a>'
+        "</div>"
+    )
+
+    # ---- the tape: a filtered activity feed from the ledger + forecast log ----
+    feed_items = list(getattr(state, "feed", None) or [])
+    if feed_items:
+        rows = "".join(
+            f'<li data-feed-kind="{_esc(i.get("kind","note"))}">'
+            f'<span class="fk">{_esc(i.get("kind","note"))}</span> {_esc(i.get("text",""))}</li>'
+            for i in feed_items[:30]
+        )
+        feed_body = (
+            '<div class="tabs" data-feed-filter>'
+            '<button data-kind="all" class="on">All</button>'
+            '<button data-kind="pick">Picks</button>'
+            '<button data-kind="resolve">Resolves</button>'
+            '<button data-kind="alert">Alerts</button></div>'
+            f'<ul class="feed">{rows}</ul>'
+        )
+        feed_section = _section("feed", "The tape", "What just happened",
+                                "Every pick, resolution and alert as it lands — the desk's paper trail, newest first.",
+                                feed_body, mascot="feed")
+    else:
+        feed_section = ""
 
     media_section = _section("media", "Media watch", "What the news and voices are saying",
                              "About 100 outlets and commentators, scanned for which companies and themes they're naming today.",
@@ -678,22 +785,20 @@ def render_dashboard(state) -> str:
 :root {{
   --paper:{PAPER}; --card:{CARD}; --ink:{INK}; --muted:{MUTED}; --faint:{FAINT};
   --rule:{RULE}; --accent:{ACCENT}; --accent-soft:{ACCENT_SOFT}; --up:{UP}; --down:{DOWN};
-  --serif:Charter,"Bitstream Charter","Sitka Text",Cambria,Georgia,serif;
-  --display:"Iowan Old Style","Palatino Linotype",Palatino,P052,Georgia,serif;
-  --sans:Inter,system-ui,-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
-  --mono:ui-monospace,"SFMono-Regular","Cascadia Code",Menlo,Consolas,monospace;
+  --mono:"IBM Plex Mono",ui-monospace,"SFMono-Regular","Cascadia Code",Menlo,Consolas,monospace;
+  --serif:var(--mono); --display:var(--mono); --sans:var(--mono);
 }}
 * {{ box-sizing:border-box; margin:0; }}
-body {{ background:var(--paper); color:var(--ink); font:400 17px/1.6 var(--serif);
-  -webkit-font-smoothing:antialiased; font-variant-numeric:oldstyle-nums; }}
+body {{ background:var(--paper); color:var(--ink); font:400 14.5px/1.65 var(--mono);
+  -webkit-font-smoothing:antialiased; font-variant-numeric:tabular-nums lining-nums; }}
 .wrap {{ max-width:1120px; margin:0 auto; padding:0 22px 80px; }}
 a {{ color:var(--accent); text-decoration:none; }}
 :focus-visible {{ outline:2px solid var(--accent); outline-offset:2px; }}
 
 /* ---- masthead ---- */
 .masthead {{ text-align:center; padding:30px 0 0; }}
-.wordmark {{ font:700 clamp(30px,5vw,48px)/1 var(--display); letter-spacing:.01em; }}
-.subword {{ font:400 14px/1.4 var(--serif); color:var(--muted); font-style:italic; margin-top:8px; }}
+.wordmark {{ font:700 clamp(24px,4vw,38px)/1.05 var(--display); letter-spacing:.06em; text-transform:uppercase; }}
+.subword {{ font:400 13px/1.4 var(--serif); color:var(--muted); margin-top:8px; }}
 .dateline {{ font:600 11px/1 var(--mono); letter-spacing:.07em; color:var(--muted);
   font-variant-caps:all-small-caps; text-transform:lowercase;
   border-top:1px solid var(--rule); border-bottom:3px solid var(--ink);
@@ -704,8 +809,12 @@ a {{ color:var(--accent); text-decoration:none; }}
 /* ---- lead ---- */
 .lead {{ padding:34px 0 8px; }}
 .kicker {{ font:600 12px/1 var(--sans); letter-spacing:.11em; text-transform:uppercase; color:var(--accent); margin-bottom:9px; }}
-.lead h1 {{ font:700 clamp(30px,5.2vw,52px)/1.04 var(--display); letter-spacing:-.015em; text-wrap:balance; }}
-.lead .deck {{ font:400 19px/1.5 var(--serif); color:var(--muted); max-width:44ch; margin-top:12px; }}
+.lead h1 {{ font:700 clamp(24px,4.4vw,40px)/1.1 var(--display); letter-spacing:.03em; text-transform:uppercase; text-wrap:balance; }}
+.lead .deck {{ font:400 15px/1.6 var(--serif); color:var(--muted); max-width:52ch; margin-top:12px; }}
+.qchips {{ display:flex; flex-wrap:wrap; gap:8px; margin-top:16px; }}
+.qchips a {{ font:600 12px/1 var(--mono); color:var(--ink); background:var(--card); border:1px solid var(--rule);
+  border-radius:999px; padding:8px 13px; }}
+.qchips a:hover {{ border-color:var(--accent); color:var(--accent); }}
 
 nav {{ position:sticky; top:0; z-index:20; background:rgba(250,249,246,.9);
   backdrop-filter:blur(6px); border-bottom:1px solid var(--rule); margin:22px -22px 20px;
@@ -726,7 +835,21 @@ a.kpi:hover {{ background:#fdfcf9; }}
 
 .card {{ background:var(--card); border:1px solid var(--rule); border-radius:3px; padding:26px 28px; margin:14px 0; scroll-margin-top:56px; }}
 .sec-head {{ display:flex; align-items:flex-start; justify-content:space-between; gap:12px; }}
-.card h2 {{ font:700 26px/1.15 var(--display); letter-spacing:-.015em; text-wrap:balance; }}
+.card h2 {{ font:700 19px/1.25 var(--display); letter-spacing:.04em; text-transform:uppercase; text-wrap:balance; }}
+.mascot {{ flex:none; width:44px; height:44px; opacity:.9; }}
+.peers {{ display:flex; gap:8px; overflow-x:auto; padding-bottom:10px; margin-bottom:14px; border-bottom:1px solid var(--rule); }}
+.peers a {{ flex:none; font:600 12px/1 var(--mono); color:var(--ink); background:var(--paper);
+  border:1px solid var(--rule); border-radius:999px; padding:7px 12px; white-space:nowrap; }}
+.peers a b.up {{ color:var(--up); }} .peers a b.down {{ color:var(--down); }}
+.wellcon {{ display:grid; grid-template-columns:1fr 1fr; gap:0; border:1px solid var(--rule); border-radius:3px; margin-top:18px; overflow:hidden; }}
+.wellcon > div {{ padding:14px 16px; background:var(--card); }}
+.wellcon > div:first-child {{ border-right:1px solid var(--rule); }}
+.wellcon h4 {{ font:700 11.5px/1 var(--mono); letter-spacing:.06em; text-transform:uppercase; margin-bottom:9px; }}
+.wellcon .wc-good h4 {{ color:var(--up); }} .wellcon .wc-bad h4 {{ color:var(--down); }}
+.wellcon ul {{ list-style:none; }}
+.wellcon li {{ font:400 12.5px/1.5 var(--mono); color:var(--muted); padding:3px 0; }}
+.wellcon li b {{ color:var(--ink); }}
+@media (max-width:900px) {{ .wellcon {{ grid-template-columns:1fr; }} .wellcon > div:first-child {{ border-right:0; border-bottom:1px solid var(--rule); }} }}
 .card h3 {{ font:600 12px/1.3 var(--sans); letter-spacing:.05em; text-transform:uppercase; color:var(--muted); margin:24px 0 11px; }}
 .src {{ font:600 10.5px/1.4 var(--mono); color:var(--faint); white-space:nowrap; text-transform:uppercase; letter-spacing:.05em; text-align:right; }}
 .explain {{ color:var(--muted); font:400 16px/1.55 var(--serif); margin:9px 0 20px; max-width:68ch; }}
@@ -872,6 +995,14 @@ tr.hl td {{ background:#faf4ee; }}
 .rules li {{ display:flex; gap:14px; font:400 15.5px/1.5 var(--serif); padding:5px 0; align-items:baseline; }}
 .rules .rn {{ color:var(--accent); font:700 18px/1 var(--display); flex:none; width:20px; }}
 
+.feed {{ list-style:none; border-top:1px solid var(--rule); }}
+.feed li {{ display:flex; gap:12px; align-items:baseline; font:400 13px/1.55 var(--mono); padding:8px 0; border-bottom:1px solid var(--rule); }}
+.feed li:last-child {{ border-bottom:0; }}
+.feed .fk {{ flex:none; font:700 10px/1 var(--mono); letter-spacing:.06em; text-transform:uppercase;
+  color:var(--muted); background:var(--paper); border:1px solid var(--rule); border-radius:2px; padding:3px 6px; }}
+.feed li[data-feed-kind="resolve"] .fk {{ color:var(--up); }}
+.feed li[data-feed-kind="alert"] .fk {{ color:var(--down); }}
+
 footer {{ margin-top:32px; padding-top:18px; border-top:1px solid var(--rule); font:400 12.5px/1.6 var(--sans); color:var(--faint); text-align:center; }}
 
 .reveal {{ animation:up .5s cubic-bezier(.2,.6,.2,1) both; }}
@@ -912,35 +1043,38 @@ a,button,.kpi {{ transition:color .15s ease, border-color .15s ease, background 
   </div>
 </header>
 
-<div class="lead">
+<div class="lead" id="today">
   <div class="kicker">Today's briefing</div>
   <h1>Predictions, kept honest.</h1>
   <p class="deck">Sports, prediction markets, stocks and the economy — forecast, then marked against reality. Click the tabs to explore; every table sorts on any column.</p>
+  {qchips}
 </div>
 
 <div class="kpis">{glance}</div>
 
 <nav>{nav}</nav>
 
-{_section("agent", "Live · Paper", "The agent desk", "What the agent is actually doing right now: a paper book on live data. It buys the top trending stocks and takes YES/NO positions on the most-traded Kalshi/Polymarket markets by its recalibrated fair value, marks them to the current data, and logs every trade. Real data and real (paper) marks that accrue over runs — not real money.", agent_body, "paper account")}
+{_section("agent", "Live · Paper", "The agent desk", "What the agent is actually doing right now: a paper book on live data. It buys the top trending stocks and takes YES/NO positions on the most-traded Kalshi/Polymarket markets by its recalibrated fair value, marks them to the current data, and logs every trade. Real data and real (paper) marks that accrue over runs — not real money.", agent_body, "paper account", mascot="desk")}
 
-{_section("now", "Markets · Movers", "What's moving now", "Today's trending stocks, scored two ways: steady climbers (NVIDIA-shape trends) and fast money (GameStop-shape squeezes). Each card shows the recent price line, how far it's moved, and a signal score. Attention, not advice.", now_body, "Yahoo + Google News")}
+{_section("now", "Markets · Movers", "What's moving now", "Today's trending stocks, scored two ways: steady climbers (NVIDIA-shape trends) and fast money (GameStop-shape squeezes). Each card shows the recent price line, how far it's moved, and a signal score. Attention, not advice.", now_body, "Yahoo + Google News", mascot="movers")}
 
-{_section("markets", "Prediction markets", "Where the money is betting", "Live YES odds on the most-traded markets at each venue — the current, high-value questions people are betting on. When the same question is priced on both Kalshi and Polymarket, the gap is flagged as a candidate to investigate (verify both resolve identically before believing any 'arb').", odds_body, "Kalshi + Polymarket")}
+{_section("markets", "Prediction markets", "Where the money is betting", "Live YES odds on the most-traded markets at each venue — the current, high-value questions people are betting on. When the same question is priced on both Kalshi and Polymarket, the gap is flagged as a candidate to investigate (verify both resolve identically before believing any 'arb').", odds_body, "Kalshi + Polymarket", mascot="odds")}
 
-{_section("strategies", "Strategy arena", "Strategy leaderboard", "Seven strategies — including one machine-learning model — race on historical prices with fees charged. A paper-trading experiment answering 'which style would have worked', not a live account.", arena_body + strategies_extra)}
+{_section("strategies", "Strategy arena", "Strategy leaderboard", "Seven strategies — including one machine-learning model — race on historical prices with fees charged. A paper-trading experiment answering 'which style would have worked', not a live account.", arena_body + strategies_extra, mascot="arena")}
 
 {_section("forward", "Out-of-sample", "Live study — watching it play out", "The stricter test: each run records what every strategy would buy today on a real basket, then marks it on the next run. Nothing is scored until real time passes, so it can't cheat.", forward_body)}
 
-{_section("edges", "Edge research", "Does any of it actually beat the market?", "Four leading-signal features — cross-venue lead-lag, attention acceleration, squeeze setup, and price recalibration — each scored out-of-sample under purged walk-forward validation. Positive skill beats the baseline; pure noise scores ~0 by construction.", edges_body)}
+{_section("edges", "Edge research", "Does any of it actually beat the market?", "Leading-signal features — cross-venue lead-lag, attention acceleration, squeeze setup, price recalibration, residual momentum, deception language — each scored out-of-sample under purged walk-forward validation. Positive skill beats the baseline; pure noise scores ~0 by construction.", edges_body, mascot="edges")}
 
-{_section("voices", "Ahead of the curve", "Who's early and right?", "The people worth following aren't the loudest — they're the ones whose calls are right and land before the move. Each tracked voice is scored by Brier-skill (right) and timing lead (early), ranked by record and never by follower count. A voice making random calls scores ~0.", voices_body)}
+{feed_section}
 
-{_section("trust", "Calibration · Sports", "Are the predictions trustworthy?", "When the model says 30%, does it happen about 30% of the time? The closer the dots to the line, the more you can trust the numbers. Each sport is scored (Brier, lower is better) against simply guessing the base rate.", sports_body, "sports Elo")}
+{_section("voices", "Ahead of the curve", "Who's early and right?", "The people worth following aren't the loudest — they're the ones whose calls are right and land before the move. Each tracked voice is scored by Brier-skill (right) and timing lead (early), ranked by record and never by follower count. A voice making random calls scores ~0.", voices_body, mascot="watch")}
 
-{_section("economy", "Macro", "Economy check", "A read on recession risk from the bond market. When short-term rates rise above long-term ones (an 'inverted' yield curve), recessions have historically followed.", macro_body, "FRED")}
+{_section("trust", "Calibration · Sports", "Are the predictions trustworthy?", "When the model says 30%, does it happen about 30% of the time? The closer the dots to the line, the more you can trust the numbers. Each sport is scored (Brier, lower is better) against simply guessing the base rate.", sports_body, "sports Elo", mascot="sports")}
 
-{_section("record", "Track record", "The scored forecasts", "The credibility piece: real predictions, logged with a probability and scored once the outcome is known — including whether they beat the market's own price.", track_body)}
+{_section("economy", "Macro", "Economy check", "A read on recession risk from the bond market. When short-term rates rise above long-term ones (an 'inverted' yield curve), recessions have historically followed.", macro_body, "FRED", mascot="macro")}
+
+{_section("record", "Track record", "The scored forecasts", "The credibility piece: real predictions, logged with a probability and scored once the outcome is known — including whether they beat the market's own price. The full ledger lives on the scorecard page.", track_body + '<p class="fine"><a href="scorecard.html">&#9656; Open the full scorecard — every forecast, hits and misses</a></p>', mascot="scorecard")}
 
 {media_section}
 
@@ -969,7 +1103,7 @@ a,button,.kpi {{ transition:color .15s ease, border-color .15s ease, background 
 </section>
 
 <footer>
-  Set in Charter &amp; Iowan Old Style · No. {issue} · auto-refreshes every 30&nbsp;min · Not financial advice.<br>
+  Set in IBM Plex Mono (system fallback) · No. {issue} · auto-refreshes every 30&nbsp;min · Not financial advice.<br>
   Data from public sources (Kalshi, Polymarket, Yahoo, FRED, arXiv, football-data.co.uk and others), each under its own terms.
 </footer>
 </div>
@@ -1006,7 +1140,19 @@ a,button,.kpi {{ transition:color .15s ease, border-color .15s ease, background 
       }});
     }});
   }});
-  var links={{}}; document.querySelectorAll('nav a').forEach(function(a){{links[a.getAttribute('href').slice(1)]=a;}});
+  document.querySelectorAll('[data-feed-filter]').forEach(function(g){{
+    g.querySelectorAll('button').forEach(function(b){{
+      b.addEventListener('click', function(){{
+        g.querySelectorAll('button').forEach(function(x){{x.classList.remove('on');}});
+        b.classList.add('on');
+        var kind=b.getAttribute('data-kind');
+        g.parentElement.querySelectorAll('.feed li').forEach(function(li){{
+          li.classList.toggle('hidden', kind!=='all' && li.getAttribute('data-feed-kind')!==kind);
+        }});
+      }});
+    }});
+  }});
+  var links={{}}; document.querySelectorAll('nav a[href^="#"]').forEach(function(a){{links[a.getAttribute('href').slice(1)]=a;}});
   if('IntersectionObserver' in window){{
     var obs=new IntersectionObserver(function(es){{
       es.forEach(function(e){{ if(e.isIntersecting){{

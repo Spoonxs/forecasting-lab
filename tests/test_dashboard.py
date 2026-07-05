@@ -44,8 +44,8 @@ def test_sparkline_colors_by_net_move():
     up = sparkline_svg([1.0, 1.1, 1.3])
     down = sparkline_svg([1.3, 1.1, 1.0])
     assert up.startswith("<svg") and "role=\"img\"" in up
-    assert "#0B6B3A" in up  # green line when it rose
-    assert "#B0281A" in down  # red line when it fell
+    assert "#2F7D31" in up  # green line when it rose (Stock Taper palette)
+    assert "#C6392C" in down  # brick line when it fell
     assert sparkline_svg([1.0]).endswith("</svg>")  # too-short series doesn't crash
 
 
@@ -153,6 +153,28 @@ def test_render_dashboard_is_an_interactive_visual_tool():
     assert "Well-calibrated" in html
     assert "558 sources tracked" in html
     assert "prefers-reduced-motion" in html and 'role="img"' in html
+
+
+def test_reskin_is_stock_taper_x_rallies():
+    """P4 commit 1: the skin (cream + Plex Mono + mascots + going-well pairs) and
+    the Rallies layout (peer strip, question chips, feed, feature-per-surface nav)."""
+    state = _minimal_state()
+    state.feed = [{"kind": "pick", "text": "BUY NVDA 20% — trend composite"},
+                  {"kind": "resolve", "text": "resolved: said 60%, outcome 1"}]
+    html = render_dashboard(state)
+    # skin
+    assert "#FBF7EB" in html  # cream paper
+    assert "IBM Plex Mono" in html and "ui-monospace" in html  # mono with system fallback
+    assert 'class="mascot"' in html  # our own tiny SVG doodles
+    assert "going well?" in html and "concerning?" in html  # the Stock Taper pair
+    # layout
+    assert 'class="peers"' in html  # peer strip over the movers
+    assert 'class="qchips"' in html and "Is anything squeezing?" in html
+    assert 'data-feed-kind="pick"' in html and 'data-feed-kind="resolve"' in html
+    assert "scorecard.html" in html  # the Scorecard surface is in the nav
+    # self-contained: nothing external is fetched
+    assert "fonts.googleapis" not in html and "<script src=" not in html
+    assert '<link rel="stylesheet"' not in html
 
 
 def test_render_dashboard_escapes_html_in_data():

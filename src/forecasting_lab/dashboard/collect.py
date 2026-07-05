@@ -35,6 +35,8 @@ class LabState:
     edge_features: dict = field(default_factory=dict)  # Phase-1 edge features + their OOS skill
     voices: dict = field(default_factory=dict)  # Phase-3 "ahead of the curve" voice leaderboard
     agent: dict = field(default_factory=dict)  # the agent desk: paper picks/bets on real data
+    feed: list = field(default_factory=list)  # the tape: picks/resolves/alerts, newest first
+    scorecard: dict = field(default_factory=dict)  # the full forecast ledger for scorecard.html
 
 
 def _fit_tennis(seed: int = 0) -> dict:
@@ -223,7 +225,65 @@ def collect_lab_state(seed: int = 0) -> LabState:
     state.edge_features = _edge_features()
     state.voices = _voice_leaderboard(state.generated)
     state.agent = _agent_desk(state)
+    state.feed = _feed(state)
+    state.scorecard = _scorecard_state()
     return state
+
+
+def _feed(state) -> list:
+    """The tape: picks (agent blotter), resolves (forecast log), alerts — newest first."""
+    items: list[dict] = []
+    for line in (state.agent or {}).get("blotter", [])[:10]:
+        items.append({"kind": "pick", "text": str(line)})
+    try:
+        from ..calibration_log import ForecastLog
+
+        log = ForecastLog()
+        res = log.resolved().sort_values("resolved_date", ascending=False).head(10)
+        for _, r in res.iterrows():
+            hit = "hit" if int(r["outcome"]) == 1 else "miss (scored, kept on the board)"
+            items.append({"kind": "resolve",
+                          "text": f'{r["resolved_date"]}: "{r["question"]}" resolved — said '
+                                  f'{float(r["prob"]):.0%}, outcome {int(r["outcome"])} · {hit}'})
+    except Exception:  # pragma: no cover - defensive
+        pass
+    alerts = (state.digests or {}).get("media-watch") or {}
+    if not alerts.get("empty"):
+        for heading, content in list(alerts.get("sections", {}).items())[:1]:
+            for b in content.get("bullets", [])[:5]:
+                items.append({"kind": "alert", "text": f"{heading}: {b}"})
+    return items
+
+
+def _scorecard_state() -> dict:
+    """The full forecast ledger for the scorecard page: score + rows, split
+    resolved (worst first — the miss ledger) vs open (under audit)."""
+    try:
+        from ..calibration_log import ForecastLog
+
+        log = ForecastLog()
+        df = log.to_frame()
+        if df.empty:
+            return {"empty": True}
+        outcome = pd.to_numeric(df["outcome"], errors="coerce")
+        resolved = df[outcome.notna()].copy()
+        open_rows = df[outcome.isna()]
+        out: dict = {"empty": False, "n_resolved": int(len(resolved)), "n_open": int(len(open_rows))}
+        if not resolved.empty:
+            y = pd.to_numeric(resolved["outcome"]).astype(float)
+            p = pd.to_numeric(resolved["prob"]).astype(float)
+            resolved["sq_error"] = (p - y) ** 2
+            resolved = resolved.sort_values("sq_error", ascending=False)  # misses pinned first
+            out["score"] = log.score()
+            out["beat"] = log.beat_market_score()
+            out["reliability"] = reliability_table(y.to_numpy(), p.to_numpy(), n_bins=10).to_dict("records")
+            out["rows"] = resolved.head(40).to_dict("records")
+        else:
+            out["rows"] = []
+        out["open_rows"] = open_rows.head(40).to_dict("records")
+        return out
+    except Exception:  # pragma: no cover - defensive
+        return {"empty": True}
 
 
 def _agent_desk(state) -> dict:
