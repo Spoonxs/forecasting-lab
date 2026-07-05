@@ -149,6 +149,29 @@ Codex's critique of this plan, folded in as requirements:
    disclaimer + "personal research tool, not advice to others" framing on every
    page. Verdict-on-holdings shows "why this changed today" diffs.
 
+## §10 Codex round-2 review — adopted (2026-07-05)
+1. **Worker hardening** (verified vs Cloudflare docs: 100k req/day free, 10ms
+   CPU, 50 subrequests): symbol allowlist FROM the registry, uppercase
+   canonicalization, per-IP token bucket, per-symbol cache keys,
+   stale-while-revalidate, market-hours TTLs, negative caching for
+   invalid/delisted, CORS locked to our origin only, no arbitrary batch
+   queries. The real fragility is upstream (Yahoo/news) — health checks +
+   cached fallbacks required.
+2. **Landing restraint** (trust-sensitive product): particles/grain/serif
+   theatrics on `landing.html` ONLY; the app stays calmer than the marketing.
+   Cut: particles over data, vertical rails in-app, video loops. Keep: paper
+   texture, decisive easing, real product screenshots, freshness badges.
+   **Perf budgets: landing JS <50KB, hero asset <200KB, zero layout shift,
+   reduced-motion default respected.**
+3. **Build order reconfirmed**: scoring contract → portfolio evaluator
+   ("what changed today" + ONE clear action per holding) → the
+   materiality/regret ledger as the credibility engine.
+4. **DECISION FRICTION DETECTOR** (new, ours): a verdict can be positive yet
+   NOT actionable — tax drag, position size vs mandate, spread/liquidity (our
+   V9 spread gate as a signal), earnings proximity, wash-sale window. The card
+   then says "don't do this now" with the reason. Profitable operators need
+   that as much as "buy". Ships with the portfolio phase (P6c).
+
 ## Build order (post-review scope: stocks/ETFs/portfolio first)
 **P6a — the scoring contract** (no UI): `signals/verdict.py` — instrument
 registry (stocks + core ETFs + HYSA benchmark), the four-dial confidence
