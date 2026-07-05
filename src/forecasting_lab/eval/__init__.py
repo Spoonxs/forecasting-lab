@@ -6,6 +6,12 @@ a model that just picks the favorite looks good because favorites win most of th
 time. See ``project-forecasting-lab.md`` and ``ml-system-design.md``.
 """
 
+from .honest_stats import (
+    cluster_outcomes,
+    independent_bets,
+    shrunk_win_rate,
+    win_rate_zscore,
+)
 from .metrics import (
     brier_decomposition,
     brier_score,
@@ -26,4 +32,8 @@ __all__ = [
     "expected_calibration_error",
     "maximum_calibration_error",
     "summary",
+    "shrunk_win_rate",
+    "cluster_outcomes",
+    "win_rate_zscore",
+    "independent_bets",
 ]
