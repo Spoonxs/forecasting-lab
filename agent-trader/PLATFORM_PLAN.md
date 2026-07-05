@@ -49,6 +49,20 @@ yield components). Verdicts re-render client-side from precomputed per-component
 scores — one build serves every profile. The profile also drives the portfolio
 builder's guardrails (mandate caps by risk level).
 
+## §2b Full-universe coverage (operator requirement: "like Robinhood")
+The registry covers **every listed US stock and ETF** (~11k symbols: SEC
+company_tickers + Nasdaq Trader nasdaqlisted/otherlisted with the ETF flag),
+all searchable. Two verdict tiers, honestly labeled on every card:
+- **TIER FULL (nightly)**: S&P 500 + major ETFs + trending + `data/watchlist.json`
+  (~1k names) — all components, backtests, audit-hashed artifacts.
+- **TIER LIVE (on-demand, any symbol)**: computed in-browser through a free
+  Cloudflare Worker (edge-cached quotes/bars, 100k req/day free — the
+  low-latency path) running the SAME scoring contract from shipped weights
+  JSON; fewer components ⇒ the confidence dials show it and INSUFFICIENT
+  EVIDENCE gates identically. Watchlisting a name promotes it to TIER FULL
+  on the next nightly build. Worker deploy is optional; without it TIER LIVE
+  degrades to "add to watchlist for tomorrow's build" — stated, never silent.
+
 ## §3 Instruments beyond stocks
 - **ETFs** (VOO QQQ SPY VTI IWM DIA SCHD + sector SPDRs): holdings overlap,
   expense ratio, drawdown/vol profile vs horizon, verdict card like stocks.
