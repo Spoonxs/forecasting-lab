@@ -19,12 +19,21 @@ import numpy as np
 import pandas as pd
 
 
-def max_drawdown(equity: pd.Series) -> float:
-    """Worst peak-to-trough fractional decline of an equity curve (<= 0)."""
+def max_drawdown(equity: pd.Series, start_value: float | None = 1.0) -> float:
+    """Worst peak-to-trough fractional decline of an equity curve (<= 0).
+
+    ``start_value`` prepends the pre-trade capital so a crash on the very first
+    period counts — a cumprod curve that starts *after* the loss never saw the
+    peak (the Sarithis "first trading day omitted" bug). ``None`` scores the raw
+    curve only.
+    """
     if len(equity) == 0:
         return 0.0
-    running_max = equity.cummax()
-    drawdown = equity / running_max - 1.0
+    values = np.asarray(equity, dtype=float)
+    if start_value is not None:
+        values = np.concatenate(([float(start_value)], values))
+    running_max = np.maximum.accumulate(values)
+    drawdown = values / running_max - 1.0
     return float(drawdown.min())
 
 

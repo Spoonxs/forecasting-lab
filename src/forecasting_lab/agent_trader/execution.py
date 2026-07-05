@@ -72,12 +72,17 @@ class PaperBroker:
         self.positions: dict[str, Position] = {}
         self._filled: dict[str, Fill] = {}  # client_order_id -> Fill (idempotency ledger)
         self.equity_high = cash
+        #: symbols whose last mark had no live price (valued at entry — stale, flagged).
+        self.last_mark_missing: list[str] = []
 
     def equity(self, prices: dict[str, float]) -> float:
         mkt = sum(p.qty * prices.get(p.symbol, p.avg_price) for p in self.positions.values())
         return self.cash + mkt
 
     def mark(self, prices: dict[str, float]) -> float:
+        # a held symbol with no price is valued at entry — that staleness must be
+        # LOUD, or the position's every loss is invisible (an "immortal" position)
+        self.last_mark_missing = sorted(s for s in self.positions if s not in prices)
         eq = self.equity(prices)
         self.equity_high = max(self.equity_high, eq)
         return eq
@@ -149,12 +154,24 @@ class ExecutionLayer:
         equity = self.broker.mark(self.prices)
         if self.kill_switch_tripped(equity):
             return RebalanceResult([], halted=True, notes=["kill switch: daily drawdown limit breached — HALT"])
-        capped, notes = self._capped_targets(targets)
+        # full rebalance: a held symbol absent from the targets means weight ZERO —
+        # anything else leaves "immortal" positions that are never exited
+        implied = {s: 0.0 for s in self.broker.positions if s not in targets}
+        capped, notes = self._capped_targets({**implied, **targets})
+        for sym in self.broker.last_mark_missing:
+            notes.append(f"{sym}: stale mark — no live price, valued at entry (flagged)")
         fills: list[Fill] = []
-        for sym, w in capped.items():
-            price = self.prices[sym]
-            target_qty = (w * equity) / price
+        # exits first, so freed capital is real before new entries are sized
+        for sym, w in sorted(capped.items(), key=lambda kv: kv[1]):
+            price = self.prices.get(sym)
             held = self.broker.positions.get(sym)
+            if price is None:
+                if held is not None:
+                    notes.append(f"{sym}: cannot exit — no price today (position kept, flagged)")
+                else:
+                    notes.append(f"{sym}: skipped — no price today")
+                continue
+            target_qty = (w * equity) / price
             delta = target_qty - (held.qty if held else 0.0)
             if abs(delta) * price < 1.0:  # skip dust
                 continue

@@ -28,8 +28,10 @@ def _stats(returns: np.ndarray, periods_per_year: int = 252) -> dict:
     if len(returns) == 0:
         return {"bars": 0, "total_return": 0.0, "sharpe": 0.0, "max_drawdown": 0.0}
     equity = np.cumprod(1.0 + returns)
-    running_max = np.maximum.accumulate(equity)
-    drawdown = float(np.min(equity / running_max - 1.0))
+    # include the 1.0 starting capital in the peak so a first-bar crash counts
+    curve = np.concatenate(([1.0], equity))
+    running_max = np.maximum.accumulate(curve)
+    drawdown = float(np.min(curve / running_max - 1.0))
     vol = float(np.std(returns, ddof=1)) if len(returns) > 1 else 0.0
     ann_ret = float(np.mean(returns)) * periods_per_year
     ann_vol = vol * np.sqrt(periods_per_year)
