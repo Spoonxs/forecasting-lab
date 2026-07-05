@@ -165,6 +165,14 @@ class Arena:
         """Per-strategy return series as a (periods x strategies) frame."""
         return pd.DataFrame({name: rets for name, rets in self.returns.items() if rets})
 
+    def crowding(self) -> dict:
+        """The systemic-risk gauge: mean pairwise correlation across the lineup.
+        A board of 'different' strategies sharing one bet is one strategy with
+        extra steps — the flag says so next to the leaderboard."""
+        from ..agent_trader.fleet import fleet_correlation
+
+        return fleet_correlation({n: r for n, r in self.returns.items() if r})
+
     def overfitting_pbo(self, n_splits: int = 10) -> float:
         """Probability the arena's in-sample winner is overfit (CSCV). 0 if too few bars."""
         from ..eval.deflated import pbo_cscv
