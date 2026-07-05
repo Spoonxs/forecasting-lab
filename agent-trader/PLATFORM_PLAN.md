@@ -202,6 +202,35 @@ Codex's critique of this plan, folded in as requirements:
 - NOTHING IS PUSHED YET: first push to GitHub + Pages enablement is the switch
   that turns on all automation; do it after P6a lands.
 
+## §12 Round-4 fidelity matrix — resolved (2026-07-05; full matrix: design-reference/FIDELITY_MATRIX.md)
+Codex cross-checked the plan against every reference feature (120 rows).
+Correction first: several of its PARTIAL/MISSING rows are ALREADY BUILT (P4/P5
+code Codex didn't see) — confidence dots, catch-me-up, fail-closed pill,
+heartbeat, receipts chips, peer strip, mascots, question chips — the platform
+pages inherit them. Real deltas, all adopted:
+1. **Ticker chart controls** (P6b): timeframe pills + split/dividend markers
+   driven by the corporate-actions contract.
+2. **Clickable receipts** (P6b): the trust badge opens a source/timeline drawer
+   (the Intel Desk claim-tape, finally as UI).
+3. **Analyst consensus module** (P6b): distribution + avg price target beside
+   our verdict, labeled EXTERNAL OPINION, best-effort free source w/ staleness.
+4. **Hide-values toggle** (P6c) for portfolio + arena notionals.
+5. **"Changed since last visit" digest** (P6d) from the materiality ledger.
+Codex verdict on our unique bets: regret audit ("best differentiator"),
+decision journal, friction detector — all worth the risk.
+
+**Operator eval outcomes (final):**
+- **Arena roster**: Claude + Codex books at launch, plus rendered OPEN
+  "bring-your-own-model" slots (adding Gemini/Grok later = dropping in a key).
+  No fake competitors.
+- **Chat**: LOCAL DESK CHAT — `flab-ask` loads portfolio + verdicts + contract
+  as context for Claude Code / codex sessions at the machine; the site keeps
+  question chips → precomputed answers. No hosted chat.
+- **Congress/13F**: best-effort tabs WITH loud staleness labels ("filed N days
+  ago — positions may have changed"); insider tab runs on our Form-4 connector.
+- **Holdings entry**: manual + client-side broker CSV import (Robinhood/
+  Fidelity/Schwab formats parsed in-browser, never uploaded). No account linking.
+
 ## Build order (post-review scope: stocks/ETFs/portfolio first)
 **P6a — the scoring contract** (no UI): `signals/verdict.py` — instrument
 registry (stocks + core ETFs + HYSA benchmark), the four-dial confidence
