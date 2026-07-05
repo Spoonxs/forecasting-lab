@@ -17,6 +17,7 @@ from __future__ import annotations
 import html as _html
 from datetime import datetime
 
+from ..eval.honest_stats import format_metric
 from ..eval.recalibration import default_fair_value
 from ..predictions import market_prediction, mover_prediction
 
@@ -337,23 +338,55 @@ def _dfmt(feature: str, value: float) -> str:
     return _pct(value, 1, signed=True)
 
 
-def _why(pred) -> str:
-    """The odds + an expandable rationale — the design.md §7 contract, one element."""
-    items = "".join(
-        f'<li><span>{_esc(d.feature)}</span><b>{_dfmt(d.feature, d.value)}</b></li>'
+def _dots(prob: float) -> str:
+    """Confidence dots: the probability bucketed 1-5, never a fake precision."""
+    filled = max(1, min(5, round(float(prob) * 5)))
+    return ('<span class="dots" title="confidence (probability bucketed 1-5)">'
+            + "●" * filled + "○" * (5 - filled) + "</span>")
+
+
+def _trust_badge(sources: str, fetched_at: str | None) -> str:
+    """The Intel Desk trust mechanic, restyled: what fed this pick and how fresh.
+    An unstamped feed says so — silence about freshness is the bug."""
+    fresh = (f"fetched {_esc(str(fetched_at)[:16])}" if fetched_at
+             else "freshness unstamped — treated as run-time data")
+    return (f'<span class="trust" title="sources behind this pick + data freshness">'
+            f'&#10003; {_esc(sources)} · {fresh}</span>')
+
+
+def _why(pred, trust: str = "") -> str:
+    """The evidence-thesis card (design.md §7 + the Intel Desk teardown), one
+    element: WHY NOW → EVIDENCE (value + signed push) → WATCH FOR / RED FLAGS →
+    confidence dots + trust badge → the caveat. All server-rendered."""
+    ev_items = "".join(
+        f'<li><span>{_esc(d.feature)}</span>'
+        f'<b>{_dfmt(d.feature, d.value)} <i class="push {"up" if d.contribution >= 0 else "down"}">'
+        f'{"&#9650;" if d.contribution >= 0 else "&#9660;"}</i></b></li>'
         for d in pred.drivers[:5]
     )
     edge = pred.edge_vs_market
     if edge is not None and abs(edge) > 0.001:
-        items += f'<li class="edge"><span>edge vs market</span><b>{_pct(edge,1,signed=True)}</b></li>'
+        ev_items += f'<li class="edge"><span>edge vs market</span><b>{_pct(edge,1,signed=True)}</b></li>'
+    watch = [d for d in pred.drivers if d.contribution > 0][:3]
+    flags = [d for d in pred.drivers if d.contribution < 0][:3]
+    watch_html = "".join(f"<li>{_esc(d.feature)} {_dfmt(d.feature, d.value)}</li>" for d in watch) \
+        or "<li>momentum holding its drivers</li>"
+    flags_html = "".join(f"<li>{_esc(d.feature)} {_dfmt(d.feature, d.value)}</li>" for d in flags) \
+        or "<li>none in the drivers — the caveat still applies</li>"
+    why_now = _esc(", ".join(d.feature for d in pred.drivers[:2]) or "the drivers below")
     unit = "yes" if pred.kind == "market" else "lean"
-    return (f'<details class="why"><summary><b>{pred.pct()}</b> {unit} · why</summary>'
-            f'<ul class="drivers">{items}</ul>'
-            f'<p class="cav">{_esc(pred.caveat)}</p></details>')
+    return (
+        f'<details class="why"><summary><b>{pred.pct()}</b> {unit} {_dots(pred.probability)} · why</summary>'
+        f'<div class="ev"><h5>Why now</h5><p class="whynow">{why_now}</p>'
+        f'<h5>Evidence</h5><ul class="drivers">{ev_items}</ul>'
+        f'<div class="wf"><div><h5 class="wfg">Watch for</h5><ul>{watch_html}</ul></div>'
+        f'<div><h5 class="wfb">Red flags</h5><ul>{flags_html}</ul></div></div>'
+        f'{trust}<p class="cav">{_esc(pred.caveat)}</p></div></details>'
+    )
 
 
 # ---------------------------------------------------------------- movers board
-def _mover_card(c: dict) -> str:
+def _mover_card(c: dict, trust: str = "") -> str:
     last = c.get("last")
     price = f"${last:,.2f}" if isinstance(last, (int, float)) else ""
     score = c.get("momentum", 0.0)
@@ -368,7 +401,7 @@ def _mover_card(c: dict) -> str:
         f'<div class="chips">{_chip("5d", c.get("ret_5d",0))}{_chip("60d", c.get("ret_60d",0))}'
         f'<span class="chip flat">{_pct(c.get("pct_from_high",0),0,signed=True)} <em>vs high</em></span></div>'
         f'<div class="mv-score"><span>signal</span>{_bar(frac, STRATEGY_COLORS["momentum_60d"])}'
-        f'<b>{_signed(score)}</b></div>{_why(pred)}{news}</article>'
+        f'<b>{_signed(score)}</b></div>{_why(pred, trust)}{news}</article>'
     )
 
 
@@ -388,21 +421,23 @@ def _movers_board(movers: dict) -> str:
                       "Locally: flab-trending.")
     mom = movers.get("movers", [])[:8]
     fast = movers.get("fast", [])[:8]
+    trust = _trust_badge("Yahoo charts + Google News",
+                         (movers.get("freshness") or {}).get("fetched_at"))
     peers = _peer_strip(mom + [c for c in fast if c["ticker"] not in {m["ticker"] for m in mom}])
     tabs = (
         '<div class="tabs" data-tab-group="movers">'
         '<button data-tab="mom" class="on">Steady climbers</button>'
         '<button data-tab="fast">Fast money</button></div>'
     )
-    mom_html = '<div class="movers" data-tab-panel="mom">' + "".join(_mover_card(c) for c in mom) + "</div>"
-    fast_html = '<div class="movers hidden" data-tab-panel="fast">' + "".join(_mover_card(c) for c in fast) + "</div>"
+    mom_html = '<div class="movers" data-tab-panel="mom">' + "".join(_mover_card(c, trust) for c in mom) + "</div>"
+    fast_html = '<div class="movers hidden" data-tab-panel="fast">' + "".join(_mover_card(c, trust) for c in fast) + "</div>"
     note = "" if movers.get("reddit_ok") else '<p class="fine">Social-velocity (Reddit) is unavailable here; it feeds the fast-money score in the cloud.</p>'
     pair = _well_concerning([mover_prediction(c) for c in mom])
     return peers + tabs + mom_html + fast_html + pair + note
 
 
 # ---------------------------------------------------------------- odds board
-def _odds_card(event, k, p, similarity, footer) -> str:
+def _odds_card(event, k, p, similarity, footer, trust: str = "") -> str:
     pred = market_prediction(event, p, "Polymarket", gap=abs(float(k) - float(p)),
                              similarity=similarity, fair_value=default_fair_value(p))
     return (
@@ -411,21 +446,23 @@ def _odds_card(event, k, p, similarity, footer) -> str:
         f'<div class="odds-bars">'
         f'<div class="ob"><label>Kalshi</label>{_bar(k, "#2F6690")}<span>{_pct(k,0)}</span></div>'
         f'<div class="ob"><label>Polymarket</label>{_bar(p, ACCENT)}<span>{_pct(p,0)}</span></div></div>'
-        f'<div class="odds-edge">{footer}</div>{_why(pred)}</div>'
+        f'<div class="odds-edge">{footer}</div>{_why(pred, trust)}</div>'
     )
 
 
-def _odds_row(event, yes, venue, color) -> str:
+def _odds_row(event, yes, venue, color, trust: str = "") -> str:
     pred = market_prediction(event, yes, venue, fair_value=default_fair_value(yes))
     return (f'<div class="odds1"><div class="o1-q">{_esc(event)}</div>'
             f'<div class="ob">{_bar(yes, color)}<span>{_pct(yes,0)} yes</span></div>'
-            f'<div class="o1-v">{_esc(venue)}</div>{_why(pred)}</div>')
+            f'<div class="o1-v">{_esc(venue)}</div>{_why(pred, trust)}</div>')
 
 
 def _odds_board(edges: dict) -> str:
     flagged = edges.get("edges") or []
     matched = edges.get("matched") or []
     live = edges.get("live") or {}
+    trust = _trust_badge("Kalshi + Polymarket live books",
+                         (edges.get("freshness") or {}).get("fetched_at"))
 
     cross = ""
     if flagged:
@@ -433,13 +470,13 @@ def _odds_board(edges: dict) -> str:
         for e in sorted(flagged, key=lambda e: abs(e.get("net_edge", 0)), reverse=True)[:8]:
             buy = "Kalshi" if "kalshi" in str(e.get("direction", "")).lower() else "Polymarket"
             footer = f'<b>{_pct(e.get("net_edge",0),1,signed=True)}</b> gap after fees · cheaper on {_esc(buy)}'
-            cards.append(_odds_card(e["event"], e.get("kalshi", 0), e.get("poly", 0), e.get("similarity", 0), footer))
+            cards.append(_odds_card(e["event"], e.get("kalshi", 0), e.get("poly", 0), e.get("similarity", 0), footer, trust))
         cross = ('<h3>Cross-venue gaps</h3>'
                  '<p class="fine">The same question priced differently on each venue — candidates to investigate.</p>'
                  '<div class="oddswrap">' + "".join(cards) + "</div>")
     elif matched:
         cards = [_odds_card(m["event"], m.get("kalshi", 0), m.get("poly", 0), m.get("similarity", 0),
-                            f'{_pct(m.get("gap",0),1)} apart · within fees')
+                            f'{_pct(m.get("gap",0),1)} apart · within fees', trust)
                  for m in sorted(matched, key=lambda m: m.get("gap", 0), reverse=True)[:6]]
         cross = ('<h3>Same question, both venues</h3>'
                  '<div class="oddswrap">' + "".join(cards) + "</div>")
@@ -449,10 +486,10 @@ def _odds_board(edges: dict) -> str:
     if poly or kalshi:
         cols = []
         if poly:
-            rows = "".join(_odds_row(m["event"], m["yes"], "Polymarket", ACCENT) for m in poly[:8])
+            rows = "".join(_odds_row(m["event"], m["yes"], "Polymarket", ACCENT, trust) for m in poly[:8])
             cols.append(f'<div class="ocol"><h3>Polymarket · most traded</h3>{rows}</div>')
         if kalshi:
-            rows = "".join(_odds_row(m["event"], m["yes"], "Kalshi", "#2F6690") for m in kalshi[:8])
+            rows = "".join(_odds_row(m["event"], m["yes"], "Kalshi", "#2F6690", trust) for m in kalshi[:8])
             cols.append(f'<div class="ocol"><h3>Kalshi · most active</h3>{rows}</div>')
         live_html = '<div class="ocols">' + "".join(cols) + "</div>"
 
@@ -564,12 +601,16 @@ def render_dashboard(state) -> str:
             entry = f'${p["entry"]:,.2f}' if stock else _pct(p["entry"], 0)
             now = f'${p["mark"]:,.2f}' if stock else _pct(p["mark"], 0)
             cls = "up" if p["pnl"] >= 0 else "down"
+            # alloc% only when the ledger stored it — never reconstructed after the fact
+            alloc = format_metric(p.get("alloc"), "{:.0%}")
             prows.append(
                 f'<tr><td>{_esc(p["name"])}</td><td>{_esc(p["side"])}</td>'
+                f'<td class="num">{_esc(alloc)}</td>'
                 f'<td class="num">{entry}</td><td class="num">{now}</td>'
                 f'<td class="num {cls}">{_pct(p["pnl"],1,signed=True)}</td><td>{_esc(p["thesis"])}</td></tr>'
             )
         table = ('<div class="twrap"><table><thead><tr><th>position</th><th>side</th>'
+                 '<th class="num">alloc</th>'
                  '<th class="num">entry</th><th class="num">now</th><th class="num">P&amp;L</th><th>why</th>'
                  f'</tr></thead><tbody>{"".join(prows)}</tbody></table></div>')
         agent_body = head + blotter + table
@@ -583,6 +624,28 @@ def render_dashboard(state) -> str:
         max_ret = max((abs(r["total_return"]) for r in ar["leaderboard"]), default=1.0) or 1.0
         table = _sortable(ar["leaderboard"], cols, bar_col="total_return", bar_max=max_ret, highlight="ml_ranker")
         pbo = ar.get("pbo", 0.0)
+
+        # the gate stated in the open (Engo honesty): candidates -> survivors -> default
+        gate = ar.get("gate") or {}
+        gate_html = ""
+        if gate:
+            if gate.get("hold"):
+                verdict = (f'<b class="hold">0 survive &#8594; the stated allocation is 100% '
+                           f'{_esc(gate.get("benchmark", "benchmark"))}</b>')
+            else:
+                names = ", ".join(_plain(s) for s in gate.get("survivors", []))
+                verdict = f"<b>{len(gate.get('survivors', []))} survive: {_esc(names)}</b>"
+            crowd = ar.get("crowding") or {}
+            crowd_html = ""
+            if crowd:
+                flag = ('<b class="warn">crowded — the fleet is mostly one bet</b>' if crowd.get("crowded")
+                        else "not crowded")
+                crowd_html = (f'<span class="crowd">Crowding gauge: mean pairwise correlation '
+                              f'{crowd.get("mean_pairwise_corr", 0):+.2f} &#183; {flag}</span>')
+            gate_html = (
+                f'<div class="gateline">THE GATE: {gate.get("k", 0)} candidates &#183; '
+                f'deflated-Sharpe / PBO / fleet-FDR &#183; {verdict}{crowd_html}</div>'
+            )
         ml_line = ""
         if ml_rank:
             ml_line = (f'<div class="mlcard"><span class="dot" style="background:{STRATEGY_COLORS["ml_ranker"]}"></span>'
@@ -591,11 +654,13 @@ def render_dashboard(state) -> str:
                        f'will lead. On this near-random synthetic market it does not beat simple momentum — which is the '
                        f'honest result, and exactly what the test is for.</div></div>')
         arena_body = (
-            '<div class="chart wide">' + equity_svg(ar["curves"]) + "</div>" + table + ml_line
+            gate_html
+            + '<div class="chart wide">' + equity_svg(ar["curves"]) + "</div>" + table + ml_line
             + f'<div class="note"><strong>How to read it.</strong> Click any column to sort. This is <em>paper trading</em> '
-            f'on historical prices with fees — not real money. “Confidence real” (0–1) discounts each result for the fact '
-            f'that seven strategies were tried; there is a <strong>{pbo:.0%}</strong> chance the leader is just luck. '
-            f'The dashed lines are the two controls a real strategy must beat.</div>'
+            f'on historical prices with fees — not real money. The benchmark rows (buy &amp; hold, random) are always '
+            f'on the board — a strategy that can\'t beat them isn\'t one. “Confidence real” (0–1) is the deflated Sharpe: '
+            f'how sure we are the result beats the best-of-K-tries luck. PBO is the chance the in-sample winner is '
+            f'overfit — here <strong>{pbo:.0%}</strong>. The dashed lines are the two controls.</div>'
         )
 
     fw = state.forward
@@ -917,6 +982,21 @@ a.kpi:hover {{ background:#fdfcf9; }}
 .drivers li b {{ font-family:var(--mono); font-weight:600; }}
 .drivers li.edge b {{ color:var(--accent); }}
 .why .cav {{ font:italic 11.5px/1.4 var(--serif); color:var(--faint); margin-top:8px; }}
+.dots {{ font-size:10px; letter-spacing:2px; color:var(--accent); margin-left:6px; }}
+.trust {{ display:inline-block; font:600 10.5px/1.5 var(--mono); color:var(--muted); background:var(--paper);
+  border:1px solid var(--rule); border-radius:2px; padding:4px 8px; margin-top:10px; }}
+.ev h5 {{ font:700 10.5px/1 var(--mono); letter-spacing:.07em; text-transform:uppercase; color:var(--muted); margin:10px 0 4px; }}
+.ev .whynow {{ font:400 12.5px/1.5 var(--mono); color:var(--ink); }}
+.ev .push {{ font-style:normal; font-size:9px; }}
+.wf {{ display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-top:4px; }}
+.wf ul {{ list-style:none; }}
+.wf li {{ font:400 11.5px/1.5 var(--mono); color:var(--muted); padding:2px 0; }}
+.wf .wfg {{ color:var(--up); }} .wf .wfb {{ color:var(--down); }}
+.gateline {{ font:600 13px/1.6 var(--mono); background:var(--card); border:1px solid var(--rule);
+  border-left:4px solid var(--accent); border-radius:3px; padding:12px 16px; margin-bottom:16px; }}
+.gateline b.hold {{ color:var(--accent); }}
+.gateline .crowd {{ display:block; font-weight:400; font-size:12px; color:var(--muted); margin-top:4px; }}
+.gateline .crowd b.warn {{ color:var(--down); }}
 
 .chart svg, .chart.wide svg {{ width:100%; height:auto; display:block; }}
 .split {{ display:grid; grid-template-columns:1.25fr 1fr; gap:26px; align-items:center; }}

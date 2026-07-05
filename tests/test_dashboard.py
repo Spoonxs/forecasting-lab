@@ -186,6 +186,35 @@ def test_render_dashboard_escapes_html_in_data():
     assert "&lt;script&gt;" in html
 
 
+def test_evidence_cards_trust_badges_and_the_arena_gate():
+    """P4 commit 3: the evidence-thesis card, trust badges, honest n/a, and the
+    Engo-style gate stated in the open on the arena board."""
+    state = _minimal_state()
+    state.arena["gate"] = {"k": 5, "survivors": [], "hold": True,
+                           "benchmark": "buy & hold", "reason": "0 of 5 survive"}
+    state.arena["crowding"] = {"mean_pairwise_corr": 0.61, "crowded": True, "n_variants": 5}
+    state.agent = {
+        "equity": 100_500.0, "return": 0.005, "n_stocks": 1, "n_markets": 0,
+        "blotter": ["BUY NVDA"],
+        "picks": [{"kind": "stock", "name": "NVDA", "side": "long", "entry": 120.0,
+                   "mark": 123.4, "pnl": 0.028, "thesis": "trend"}],  # no alloc stored
+    }
+    html = render_dashboard(state)
+    # the evidence-thesis card (Intel Desk mechanics, restyled)
+    assert "Why now" in html and "Evidence" in html
+    assert "Watch for" in html and "Red flags" in html
+    assert 'class="dots"' in html  # confidence dots, probability bucketed
+    assert 'class="trust"' in html and "Yahoo charts + Google News" in html
+    assert "freshness unstamped" in html  # silence about freshness is the bug
+    # uncomputable metrics render n/a — never reconstructed
+    assert ">n/a<" in html
+    # the gate stated in the open + the crowding gauge + benchmark on the board
+    assert "THE GATE: 5 candidates" in html
+    assert "100% buy &amp; hold" in html or "100% buy & hold" in html
+    assert "Crowding gauge" in html and "crowded" in html
+    assert "Random (control)" in html  # a benchmark row is always on the board
+
+
 def test_scorecard_empty_state_claims_nothing():
     """P4 commit 2: an empty log states the zero denominator instead of a score."""
     state = _minimal_state()

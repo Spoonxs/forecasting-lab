@@ -149,7 +149,29 @@ def _arena_state() -> dict:
         "leaderboard": board.to_dict("records"),
         "curves": {c: [round(v, 5) for v in thinned[c].tolist()] for c in thinned.columns},
         "pbo": arena.overfitting_pbo(),
+        "gate": _arena_gate(arena),
+        "crowding": arena.crowding(),
     }
+
+
+def _arena_gate(arena) -> dict:
+    """The gate stated in the open: fleet_decision over the arena's candidate
+    strategies (the two controls are the benchmark, not candidates)."""
+    try:
+        from ..agent_trader.fleet import HoldBenchmark, fleet_decision
+
+        candidates = {n: r for n, r in arena.returns.items()
+                      if r and n not in ("buy_hold", "random")}
+        if len(candidates) < 2:
+            return {}
+        decision = fleet_decision(candidates, as_of=f"bar {arena.bar}", benchmark="buy & hold")
+        if isinstance(decision, HoldBenchmark):
+            return {"k": len(candidates), "survivors": [], "hold": True,
+                    "benchmark": decision.benchmark, "reason": decision.reason}
+        return {"k": len(candidates), "survivors": list(decision.survivors),
+                "hold": False, "benchmark": "buy & hold", "reason": ""}
+    except Exception:  # pragma: no cover - defensive
+        return {}
 
 
 def _forecast_log() -> dict:
