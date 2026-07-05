@@ -5,6 +5,7 @@ from forecasting_lab.dashboard.render import (
     render_dashboard,
     sparkline_svg,
 )
+from forecasting_lab.dashboard.scorecard import render_scorecard
 
 
 def _reliability_records():
@@ -183,6 +184,46 @@ def test_render_dashboard_escapes_html_in_data():
     html = render_dashboard(state)
     assert "<script>alert(1)</script>" not in html
     assert "&lt;script&gt;" in html
+
+
+def test_scorecard_empty_state_claims_nothing():
+    """P4 commit 2: an empty log states the zero denominator instead of a score."""
+    state = _minimal_state()
+    state.scorecard = {"empty": True}
+    html = render_scorecard(state)
+    assert html.startswith("<!DOCTYPE html>")
+    assert "denominator is 0" in html and "no score is claimed" in html
+    assert "only resolved forecasts are scored" in html
+    assert "Not financial advice" in html
+    assert "fonts.googleapis" not in html and "<script src=" not in html
+
+
+def test_scorecard_pins_the_miss_ledger_and_audits_open_forecasts():
+    state = _minimal_state()
+    state.scorecard = {
+        "empty": False, "n_resolved": 3, "n_open": 2,
+        "score": {"n": 3, "brier": 0.21, "brier_skill_score": 0.12},
+        "beat": {"n": 2, "brier_skill_vs_market": 0.05, "beat_rate": 0.5},
+        "reliability": _reliability_records(),
+        # collect sorts worst (highest sq_error) first — the render must keep it
+        "rows": [
+            {"date": "2026-06-01", "question": "Big miss?", "prob": 0.9, "outcome": 0, "sq_error": 0.81},
+            {"date": "2026-06-02", "question": "Close call?", "prob": 0.6, "outcome": 1, "sq_error": 0.16},
+            {"date": "2026-06-03", "question": "Easy hit?", "prob": 0.9, "outcome": 1, "sq_error": 0.01},
+        ],
+        "open_rows": [
+            {"date": "2026-07-01", "question": "Still open?", "prob": 0.55},
+            {"date": "2026-07-02", "question": "Also open?", "prob": 0.4},
+        ],
+    }
+    html = render_scorecard(state)
+    assert "<b>3</b> resolved" in html and "<b>2</b> open" in html  # the honest denominator
+    assert "miss ledger" in html and "never hidden" in html
+    assert html.index("Big miss?") < html.index("Close call?") < html.index("Easy hit?")
+    assert 'class="miss"' in html  # the worst call is visually pinned
+    assert "Under audit" in html and "Still open?" in html and "not yet counted" in html
+    assert "Beats the closing line by" in html
+    assert "a perfect model sits on this line" in html  # the reliability SVG renders
 
 
 def test_render_dashboard_degrades_when_scans_are_empty():

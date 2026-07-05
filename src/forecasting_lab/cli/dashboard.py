@@ -13,7 +13,7 @@ import webbrowser
 from pathlib import Path
 
 from ..config import PATHS
-from ..dashboard import collect_lab_state, render_dashboard
+from ..dashboard import collect_lab_state, render_dashboard, render_scorecard
 
 
 def main(argv=None) -> int:
@@ -29,6 +29,11 @@ def main(argv=None) -> int:
     state = collect_lab_state(seed=args.seed)
     out.write_text(render_dashboard(state), encoding="utf-8")
     print(f"Dashboard written to {out}")
+
+    # the public Brier scorecard page (honest denominator, miss ledger pinned)
+    scorecard = out.parent / "scorecard.html"
+    scorecard.write_text(render_scorecard(state), encoding="utf-8")
+    print(f"Scorecard written to {scorecard}")
 
     # also render the dark, agentic Agent Terminal alongside it
     from ..agent_trader.terminal import render_terminal

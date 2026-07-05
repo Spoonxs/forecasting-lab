@@ -8,5 +8,6 @@ SVG. Open it in a browser; regenerate it whenever the lab moves.
 
 from .collect import collect_lab_state
 from .render import render_dashboard
+from .scorecard import render_scorecard
 
-__all__ = ["collect_lab_state", "render_dashboard"]
+__all__ = ["collect_lab_state", "render_dashboard", "render_scorecard"]
