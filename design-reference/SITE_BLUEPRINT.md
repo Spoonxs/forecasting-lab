@@ -1,5 +1,18 @@
 # Site blueprint — every feature & UI pattern extracted from the references
 
+> **DESIGN PRIORITY UPDATE (2026-07-05, operator decision):** the two favorite UIs are
+> **Rallies and Stock Taper — use their UI the most.** Concretely: **Stock Taper = the
+> skin** (cream `#FBF7EB`, IBM Plex Mono, white cards, eyebrow tags, mascots,
+> "going well / concerning" pairs) and **Rallies = the layout & IA** (feature-per-surface
+> nav, peer strips, position-level book tables, research sub-tabs, suggested-question
+> chips, filtered feed, visible multi-step agent plans, theme baskets). **Intel Desk is
+> demoted to a mechanics-only source** — its trust badges, claim-tape drawer, Brier
+> scorecard structure and ACT/VERIFY/PRICE/FADE buckets are adopted but **restyled in
+> the Stock Taper/Rallies language** (no sage/oxblood skin on the research surfaces; the
+> dark terminal may keep its own look). Engo contributes arena honesty only (benchmark
+> line, gate stats, 7-day publish gate). The build order + rigor track live in
+> **`agent-trader/MASTER_PLAN.md`** — that doc supersedes Part 4 below.
+
 *The consolidated extraction. Each reference was captured in full (screenshots + teardowns
 in this folder); this doc pulls out **every component and feature worth having**, says
 exactly which reference it comes from, what data powers it, and where it lands on our
