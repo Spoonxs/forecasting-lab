@@ -8,5 +8,22 @@ recur — one-off lookups are cheaper to just ask. See ``master-index.md`` and
 
 from .base import Pipeline
 from .digest import dated_note_path, render_digest, write_dated_note
+from .freshness import (
+    DataConfidence,
+    FreshnessBudget,
+    StaleDataError,
+    age_seconds,
+    stamp,
+)
 
-__all__ = ["Pipeline", "render_digest", "write_dated_note", "dated_note_path"]
+__all__ = [
+    "Pipeline",
+    "render_digest",
+    "write_dated_note",
+    "dated_note_path",
+    "stamp",
+    "age_seconds",
+    "FreshnessBudget",
+    "DataConfidence",
+    "StaleDataError",
+]

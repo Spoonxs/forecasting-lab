@@ -24,6 +24,11 @@ class Pipeline(ABC):
     #: present, ``store`` also writes ``inputs/<date>-<slug>.json`` for the dashboard.
     _data: dict | None = None
 
+    #: optional ISO-8601 fetch time a subclass sets during ``fetch`` (see
+    #: ``pipeline.freshness.stamp``) — when present, ``store`` writes it into the
+    #: JSON sidecar so every downstream reader can see how old the data is.
+    _fetched_at: str | None = None
+
     @abstractmethod
     def fetch(self) -> Any:
         """Pull raw data from the source(s)."""
@@ -35,6 +40,8 @@ class Pipeline(ABC):
     def store(self, body: str, on: _date | None = None, out_dir: Path | None = None) -> Path:
         path = write_dated_note(self.slug, body, on=on, out_dir=out_dir)
         if self._data is not None:
+            if self._fetched_at is not None:
+                self._data.setdefault("freshness", {})["fetched_at"] = self._fetched_at
             write_dated_data(self.slug, self._data, on=on, out_dir=out_dir)
         return path
 
