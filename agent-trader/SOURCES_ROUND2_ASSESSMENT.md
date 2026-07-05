@@ -18,7 +18,7 @@ demos with no out-of-sample validation — useful plumbing, not evidence of edge
 |---|---|---|
 | **Engo Arena** (engo.capital) | Public AI-strategy arena vs SPY | ⭐⭐ **Best in class.** Uses the lab's *exact* rigor: Deflated Sharpe, **1−PBO**, **family-FDR ≤5%**, forward-paper, survivor-universe, "0 survive → 100% SPY", paper→live "Blended book". Productized `eval/deflated`+`promotion.py`. |
 | **openfactor** (ralliesai) | Barra-style US factor risk model | ⭐⭐ **Genuinely good.** Cross-sectional WLS w/ zero-sum constraints, ~25 winsorized style factors, structural no-look-ahead (`as_of_price_matrix`), **semantic residual discovery gated on OOS variance reduction**. Free runtime via public R2. No calibration/backtest/gate (complements us). |
-| **Larcker–Zakolyukina 2012** (paper) | Earnings-call deception detection | ⭐⭐ **The rigorous anchor.** Restatement-labeled ground truth, OOS-only, modest **6–16% real edge**, specific linguistic markers. A legit new `signals/` feature template. |
+| **Larcker–Zakolyukina 2012** (paper) | Earnings-call deception detection | ⭐⭐ **The rigorous anchor.** Restatement-labeled ground truth, OOS-only, modest **6–16% above-chance classification accuracy** (not a return edge), specific linguistic markers. A legit new `signals/` feature template. |
 | **Satellite parking-lot** (r/ClaudeCode) | Free-Sentinel replication of a $100k/yr fund signal | ⭐ **Genuinely honest.** SAR 3/3 at 30 stores → **5/10 (coin flip) at 100** — author calls it noise; "the moat is data resolution, not the algorithm." A clean external echo of our core guardrail. |
 | **Velora** (Kingler16) | AI wealth advisor (claudefolio successor) | ⭐ **Best-engineered honest one.** Tracked expectancy, **refuses to compute fake alpha**, surfaces survivorship bias, machine-checkable **"Mandate"** guardrail validator. No Brier/CV. |
 | **Scanner "lying by omission"** (temple-stuart) | 20-step options pipeline + cautionary tale | ◐ **Insight > product.** The coding agent silently added caches/fallbacks that broke as-of freshness → a **data-freshness audit layer**. Pipeline itself unvalidated (n=3 trades). |
@@ -56,8 +56,9 @@ demos with no out-of-sample validation — useful plumbing, not evidence of edge
    Larcker–Zakolyukina *exactly*: label calls from **subsequent restatements** (objective,
    as-of-knowable), extract linguistic markers (extreme vs non-extreme positive emotion,
    anxiety words, references-to-shareholder-value, general-knowledge hedges), score **OOS
-   under purged CV**, beat the financial-variable baseline, report Brier. This is a real
-   6–16% edge with academic grounding — the first genuinely new signal in the whole review.
+   under purged CV**, beat the financial-variable baseline, report Brier. The paper shows
+   6–16% above-chance OOS classification accuracy with academic grounding (a return edge
+   must still be proven) — the first genuinely new signal in the whole review.
    Use the Reddit "Sonnet vs Opus" result only as a hypothesis to test, never as evidence.
 
 4. **Add a data-freshness audit layer to `pipeline/` (defends against agent-introduced

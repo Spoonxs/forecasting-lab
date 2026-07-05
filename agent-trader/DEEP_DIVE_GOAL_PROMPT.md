@@ -72,8 +72,9 @@ calibrat|kelly|purge|embargo|deflated|PBO|as.of|survivor|cost`) and report prese
 absent; check the licence; and note precisely what is reusable for the lab vs scaffolding
 vs red flag. For **openfactor** go deepest: the factor math, the WLS/constraints, the
 as-of leakage handling, the semantic-residual gate, the R2 data pipeline, the tests, and
-whether the published factors actually validate. Temple-Stuart's repo is private/gone —
-reconstruct it from its two Reddit posts.
+whether the published factors actually validate. (Historical note — this prompt assumed
+Temple-Stuart's repo was private; verification later found it public, 928 files. See
+`VERIFICATION_REPORT.md` §4.)
 
 ### Deliverables
 - Per-source deep-dive docs (Rallies UI teardown incl. data-quality grade; a forums

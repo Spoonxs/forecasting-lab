@@ -27,7 +27,7 @@ code decides; paper-first; nothing touches real money until the promotion gate c
 | 07 | mkash25 Plaid dashboard | Plaid → RSI/MACD/BB enrich → Sonnet JSON advice | none, advisory-only | **Honest** — audit trail, no execution |
 | 08 | Klaus Kode | Claude Code SDK agent that builds streaming data apps | n/a (tooling) | Honest tooling |
 | 09 | crowdintel — every Polymarket wallet | 1.3B trades on-chain → Postgres MCP, NL→SQL, insider radar | forensic stats | Mixed — **retracted a z-score bug**, promo-heavy |
-| 10 | rallies.ai arena — real money to N models | Identical harness+prompt per model, 50+ tools, autopilot copy-trade | 5/N beat S&P, 2 positive, 4 mo | Mixed — concedes tiny-n, conflict of interest |
+| 10 | rallies.ai arena — real money to N models | Identical harness+prompt per model, 50+ tools, autopilot copy-trade | 5/N beat S&P, 2 positive, 4 mo | Mixed — concedes tiny-n; commenters flag an unaddressed conflict of interest |
 | 11 | Temple GPT+Claude bot → web app | Next.js, Tastytrade, gate→score→explain, Greeks, VRP thesis | $400→$1.2k/8mo then **1 trade wiped it** | Mixed — admits first double was luck |
 | 12 | Opus evaluates 547 reddit recs | Multi-agent blind scoring, out-of-training holdout | AI +5.2% vs +2.4% OOS | Partly — repo reportedly has no Claude calls |
 | 13 | margincall.io — 122k-line simulator | TS+Rust/WASM, GARCH, Black-Scholes, procedural econ | n/a (a game) | Honest; **`Sarithis` 30-bug taxonomy in replies** |
@@ -49,7 +49,8 @@ are the exact failure modes — cite these when tempted to cut a corner.
    keep it that way and never imply fills are real.**
 2. **Luck worn as skill, tiny n.** (10, 11, 12, 01) 4-month down-market windows, n=1 per
    model, "coin-flipping-monkey" survivorship. Post 11's headline double was "pure luck /
-   GPT hallucination"; a single later trade wiped 8 months of gains. → Guardrail #4 +
+   GPT hallucination"; a single later trade wiped out the new system's live-test progress
+   (~1 month of gains). → Guardrail #4 +
    `eval/deflated` (deflated Sharpe, PBO/CSCV). **This is the single most-repeated
    critique in the corpus and precisely what our credibility core exists to catch.**
 3. **Backtest leakage is unavoidable for LLM agents.** (10, 12) The models memorized
@@ -57,10 +58,11 @@ are the exact failure modes — cite these when tempted to cut a corner.
    (10) and multiple in (12) hammer this. → Guardrail #1/#2; **the answer is our
    `forwardtest/` genuine-forward marking, not backtesting an LLM.** Anonymization tactic
    worth noting: replace dates with round numbers, price with relative change.
-4. **Hallucinated inputs and hallucinated tests.** (02, 03, 04, 11) Fabricated IV/vol
-   numbers; AFRM "support $40" while strikes are $72.5/$80; a silently-wrong PoP formula
-   for a week; GPT "inserting imaginary volatility numbers"; and LLMs faking a passing
-   test with truncated "…". → Fix codified in (02): **run the test loop *outside* the LLM
+4. **Hallucinated inputs and hallucinated tests.** (02, 03, 11) An AFRM $72.5/$80
+   credit-spread analysis citing a price "last seen near $47.86" — internally incoherent
+   (02); a silently-wrong PoP formula for a week (03); a commenter's Claude "inserting
+   imaginary volatility numbers" (11); and LLMs faking a passing test with truncated "…"
+   (02). → Fix codified in (02): **run the test loop *outside* the LLM
    and feed results to a fresh instance.** Our property-tests + PostToolUse pytest hook
    already enforce this; extend the discipline to any data the agent reports.
 5. **Double-counting / independence violations.** (09) crowdintel's headline z-score of
@@ -172,8 +174,9 @@ land as normal PRs, each shipping with a property test (not a golden number).
   survives costs, PBO, and a forward holdout.
 - **No trusting LLM narrative as data.** Quantify and calibrate sentiment; never ship
   un-scored LLM tone-reading as a signal (16).
-- **No full-Kelly.** (15) Penny-stock full-Kelly is a blow-up; our gate mandates
-  fractional-Kelly ≤¼.
+- **No full-Kelly.** (15 applies "Kelly Criterion" sizing to penny stocks with no
+  caveats in-thread — the blow-up warning is *our* guardrail inference, not a corpus
+  finding.) Our gate mandates fractional-Kelly ≤¼.
 
 ---
 

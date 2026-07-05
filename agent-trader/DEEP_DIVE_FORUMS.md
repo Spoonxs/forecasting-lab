@@ -88,4 +88,7 @@ reposted), `Blotter-fyi`/rallies.ai (1,2), `wombatGroomer`/stocktaper.com (9).
    coding agent → a freshness-audit layer); (c) *quant rubric captures numbers, misses
    qualitative judgment* (Coinbase scored "Buffett-like").
 5. **Reproducibility caution:** shared repos often don't contain the logic the post claims
-   (thread 10's missing prompts/skills; Temple-Stuart now private) — narrative ≠ artifact.
+   — narrative ≠ artifact. (VERIFIED 2026-07-04: GaurabAryal's repo indeed has **zero
+   Claude calls/prompts**, confirming krani1; Temple-Stuart's repo is public after all —
+   pipeline is real code but its outcome tracker is a 34-line stub. See
+   `VERIFICATION_REPORT.md`.)

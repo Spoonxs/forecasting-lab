@@ -1,7 +1,9 @@
 # Deep-dive: per-repo teardown
 
-*Line-level analysis of 9 cloned repos (the 10th, Temple-Stuart's `temple-stuart-accounting`,
-is now private/gone — reconstructed from its 3 Reddit posts in `DEEP_DIVE_FORUMS.md`).
+*Line-level analysis of 9 cloned repos. (CORRECTED 2026-07-04: Temple-Stuart's
+`temple-stuart-accounting` is **public** — the original clone failure was a truncated
+Windows checkout, full tree = 928 files; its teardown, plus GaurabAryal's
+reddit-stock-experiment and mkash25's dashboard, is in `VERIFICATION_REPORT.md` §4.)
 Rigor grep applied to each: `brier|backtest|walk.forward|sharpe|calibrat|kelly|purge|
 embargo|deflated|PBO|as.of|survivor|cost`. 2026-07-04.*
 
