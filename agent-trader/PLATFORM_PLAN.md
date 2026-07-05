@@ -172,6 +172,36 @@ Codex's critique of this plan, folded in as requirements:
    then says "don't do this now" with the reason. Profitable operators need
    that as much as "buy". Ships with the portfolio phase (P6c).
 
+## §11 Round-3 completeness audit — resolved (2026-07-05, Codex + Claude, operator decided)
+**Operator decisions (final):**
+- **Privacy = public code, private data.** Public repo (free unlimited Actions +
+  Pages). Holdings, journal, profile, decision history: browser-local ONLY with
+  one-click encrypted export/import — NEVER committed. Watchlist + AI arena
+  books are public (paper). No AI artifact may embed personal context.
+- **Codex budget = zero-key local.** Codex opinions/rebalances refresh via the
+  local job (ChatGPT auth); cloud builds render the last committed artifact
+  WITH its date. No OPENAI_API_KEY unless the operator adds one later.
+- **Scope = full search, tiered verdicts.** All ~11k searchable day one;
+  TIER FULL for S&P 500 + core ETFs + watchlist; everything else INSUFFICIENT
+  EVIDENCE until watchlisted (Worker ships later as an enhancement, not launch-blocking).
+- **Mobile = read-first.** Verdict cards + portfolio phone-first; editing
+  surfaces desktop-optimized.
+
+**Lifecycle requirements (added to the engineering contract):**
+- Market calendar + corporate actions: holidays/early closes, split/dividend
+  adjustment, ticker changes, delistings — explicit in the scoring contract and
+  arena marks (unadjusted prices corrupt everything silently).
+- Connector governance: health checks, last-good snapshot retention, a
+  "SOURCE RETIRED" state rendered honestly; replacement policy documented.
+- Actions quota discipline: intraday is best-effort; jobs must skip cleanly on
+  rate-limit instead of failing noisily; no infinite retries anywhere.
+- Success metric, defined: the regret ledger — recommendations vs SPY / HYSA /
+  do-nothing at the operator's horizon — IS the measure of "profitable".
+  It ships BEFORE the arena (sequencing fix: regret ledger moves to P6c-first).
+- Alerts need a one-time operator step (free Telegram bot token) when P6d wires.
+- NOTHING IS PUSHED YET: first push to GitHub + Pages enablement is the switch
+  that turns on all automation; do it after P6a lands.
+
 ## Build order (post-review scope: stocks/ETFs/portfolio first)
 **P6a — the scoring contract** (no UI): `signals/verdict.py` — instrument
 registry (stocks + core ETFs + HYSA benchmark), the four-dial confidence
