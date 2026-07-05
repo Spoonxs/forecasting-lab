@@ -37,6 +37,7 @@ class LabState:
     agent: dict = field(default_factory=dict)  # the agent desk: paper picks/bets on real data
     feed: list = field(default_factory=list)  # the tape: picks/resolves/alerts, newest first
     scorecard: dict = field(default_factory=dict)  # the full forecast ledger for scorecard.html
+    ledger: dict = field(default_factory=dict)  # the run-loop's ledger snapshots (agent terminal)
 
 
 def _fit_tennis(seed: int = 0) -> dict:
@@ -249,6 +250,12 @@ def collect_lab_state(seed: int = 0) -> LabState:
     state.agent = _agent_desk(state)
     state.feed = _feed(state)
     state.scorecard = _scorecard_state()
+    try:
+        from ..agent_trader.terminal import load_ledger
+
+        state.ledger = load_ledger()
+    except Exception:  # pragma: no cover - defensive
+        state.ledger = {"empty": True}
     return state
 
 

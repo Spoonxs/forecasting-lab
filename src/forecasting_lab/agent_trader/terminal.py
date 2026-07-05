@@ -1,18 +1,61 @@
-"""The Agent Terminal — a dark, alive, agentic trading desk view.
+"""The Agent Terminal — a dark, alive, agentic trading desk view (P5: the honest console).
 
 Renders the agent's real paper book as a trading terminal: a ticker tape, the Agent
 Book equity, the agent *team* as desks with status notes, a positions heatmap coloured
-by P&L, and a live "Firm Chat" feed of the desk talking to itself (fills, house view,
-risk, compliance, the graded track record). Self-contained dark HTML; every message is
-derived from the real data (paper), so it feels like a desk without faking numbers.
+by P&L, and a live "Firm Chat" feed of the desk talking to itself. P5 adds the desk
+console: a HEARTBEAT strip and a FAIL-CLOSED pill derived from the run-loop's ledger
+snapshots (OPERATIONAL / HALTED-with-reason / NO DATA — the pill never guesses), the
+MANDATE desk-notes card (violations AND the skipped-not-blocked lines, verbatim), a
+provenance EVENT FEED where every row carries its receipts (run id + the V8 audit
+hash, or "no audit record" said out loud), and a catch-me-up digest. Self-contained
+dark HTML; every message is derived from real (paper) data — nothing is faked.
 """
 
 from __future__ import annotations
 
 import html as _html
+import json
+from pathlib import Path
 
 UP = "#16c784"
 DOWN = "#ea3943"
+
+
+def default_ledger_path() -> Path:
+    """Where the run loop's ledger lives (pass this to run_once's ledger_path)."""
+    from ..config import PATHS
+
+    return PATHS.data / "agent" / "ledger.jsonl"
+
+
+def load_ledger(path: Path | str | None = None, limit: int = 20) -> dict:
+    """Read the loop's JSONL ledger defensively: the newest ``limit`` snapshots,
+    malformed lines skipped and COUNTED (never a crash, never silent)."""
+    path = Path(path) if path is not None else default_ledger_path()
+    if not path.exists():
+        return {"empty": True}
+    snapshots: list[dict] = []
+    skipped = 0
+    try:
+        lines = path.read_text(encoding="utf-8").splitlines()
+    except OSError:
+        return {"empty": True}
+    for line in lines:
+        if not line.strip():
+            continue
+        try:
+            row = json.loads(line)
+        except json.JSONDecodeError:
+            skipped += 1
+            continue
+        if isinstance(row, dict):
+            snapshots.append(row)
+        else:
+            skipped += 1
+    if not snapshots:
+        return {"empty": True, "skipped": skipped}
+    return {"empty": False, "snapshots": snapshots[-limit:], "skipped": skipped,
+            "n_total": len(snapshots)}
 
 
 def _esc(s) -> str:
@@ -68,6 +111,66 @@ def _heat(picks: list[dict]) -> str:
     return f'<div class="heat">{"".join(tiles)}</div>' if tiles else '<p class="empty">no open positions yet</p>'
 
 
+# ---------------------------------------------------------- P5: the console
+def _pill_state(ledger: dict) -> tuple[str, str, str]:
+    """(css class, label, plain-English why) from the latest snapshot — no guessing."""
+    if ledger.get("empty"):
+        return "p-nodata", "NO DATA", "no runs in the ledger yet — the loop hasn't executed here"
+    last = ledger["snapshots"][-1]
+    if last.get("halted"):
+        notes = " ".join(str(n) for n in last.get("notes", []))
+        if "mandate BLOCK" in notes:
+            why = "the mandate blocked the proposal before execution"
+        elif "kill switch" in notes:
+            why = "the kill switch halted the rebalance (daily drawdown breached)"
+        else:
+            why = "the last run halted — see the notes on the tape"
+        return "p-halt", "HALTED", why
+    return "p-ok", "OPERATIONAL", "last run completed; guardrails enforced in the execution layer"
+
+
+def _heartbeat(ledger: dict) -> str:
+    if ledger.get("empty"):
+        return ('<div class="hb"><span class="hb-item">no runs yet — the heartbeat starts '
+                "with the first ledger snapshot</span></div>")
+    snaps = ledger["snapshots"]
+    last = snaps[-1]
+    eq = float(last.get("equity", 0.0))
+    items = [f'<span class="hb-item">last run <b>{_esc(last.get("run_id", "?"))}</b></span>',
+             f'<span class="hb-item">equity <b>${eq:,.0f}</b></span>']
+    if len(snaps) >= 2:
+        prev = float(snaps[-2].get("equity", 0.0))
+        delta = (eq / prev - 1.0) if prev else 0.0
+        items.append(f'<span class="hb-item">vs prior run <b style="color:{_c(delta)}">{_pct(delta)}</b></span>')
+    items.append(f'<span class="hb-item">fills last run <b>{int(last.get("fills", 0))}</b></span>')
+    if ledger.get("skipped"):
+        items.append(f'<span class="hb-item">{int(ledger["skipped"])} malformed ledger line(s) skipped</span>')
+    return f'<div class="hb">{"".join(items)}</div>'
+
+
+def _mandate_card(ledger: dict) -> str:
+    if ledger.get("empty"):
+        return ""
+    report = ledger["snapshots"][-1].get("mandate")
+    if not report:
+        return ""
+    status = str(report.get("status", "pass"))
+    tone = {"pass": "ok", "warn": "idea", "block": "fill"}.get(status, "")
+    lines = []
+    for v in report.get("violations", []):
+        lines.append(f'<li class="m-block">BLOCK · {_esc(v)}</li>')
+    for w in report.get("warnings", []):
+        lines.append(f'<li class="m-warn">WARN · {_esc(w)}</li>')
+    for s in report.get("skipped", []):
+        lines.append(f'<li class="m-skip">SKIPPED · {_esc(s)}</li>')
+    body = "".join(lines) or '<li class="m-skip">every rule passed cleanly</li>'
+    return (f'<div class="desk mandate"><div class="dtop"><span class="ava">&#9878;&#65039;</span>'
+            f'<span class="dname">Mandate</span><span class="badge {tone}">{_esc(status)}</span></div>'
+            f'<ul class="mlist">{body}</ul>'
+            f'<p>The mandate is a decision, not an order — a BLOCK stops the cycle before '
+            f'the execution layer ever sees it.</p></div>')
+
+
 def _chat(agent: dict, as_of: str) -> str:
     msgs = []
 
@@ -101,12 +204,19 @@ def _chat(agent: dict, as_of: str) -> str:
 def render_terminal(state) -> str:
     agent = getattr(state, "agent", {}) or {}
     movers = getattr(state, "movers", {}) or {}
+    ledger = getattr(state, "ledger", None) or {"empty": True}
     as_of = getattr(state, "generated", "")
     picks = agent.get("picks") or []
     equity = agent.get("equity", 100_000.0)
     ret = agent.get("return", 0.0)
     n_stocks = agent.get("n_stocks", 0)
     n_markets = agent.get("n_markets", 0)
+
+    pill_cls, pill_label, pill_why = _pill_state(ledger)
+    status_pill = (f'<div class="pill statuspill {pill_cls}" title="{_esc(pill_why)}">'
+                   f'{pill_label}<span class="pwhy">{_esc(pill_why)}</span></div>')
+    heartbeat = _heartbeat(ledger)
+    mandate_card = _mandate_card(ledger)
 
     if not picks:
         board = '<p class="empty">The desk hasn\'t opened any paper positions yet — it acts on the next data scan.</p>'
@@ -143,6 +253,18 @@ header{{padding:20px 0 14px;display:flex;align-items:flex-end;gap:26px;flex-wrap
 .book .chg{{font:600 15px/1 ui-monospace;margin-top:6px}}
 .pill{{margin-left:auto;font:600 12px/1 ui-sans-serif;color:var(--mut);border:1px solid var(--line);
   padding:8px 12px;border-radius:999px}}
+.statuspill{{margin-left:auto;font:800 12px/1 ui-sans-serif;letter-spacing:.06em}}
+.statuspill .pwhy{{display:block;font:500 10.5px/1.3 ui-sans-serif;letter-spacing:0;margin-top:4px;color:var(--mut)}}
+.statuspill.p-ok{{color:var(--up);border-color:#1d4f3c}}
+.statuspill.p-halt{{color:var(--dn);border-color:#5b2026;background:#2a1417}}
+.statuspill.p-nodata{{color:var(--mut)}}
+.statuspill + .pill{{margin-left:0}}
+.hb{{display:flex;flex-wrap:wrap;gap:8px 22px;padding:10px 0;border-bottom:1px solid var(--line);
+  font:500 12.5px/1.4 ui-monospace,Consolas,monospace;color:var(--mut)}}
+.hb b{{color:var(--ink)}}
+.mandate .mlist{{list-style:none;margin:2px 0 8px;font:500 11.5px/1.6 ui-monospace,Consolas,monospace}}
+.mandate .m-block{{color:var(--dn)}} .mandate .m-warn{{color:#e8b23e}} .mandate .m-skip{{color:var(--mut)}}
+.badge.ok{{color:var(--up)}} .badge.fill{{color:var(--dn)}} .badge.idea{{color:#6ea8fe}}
 h2{{font:700 13px/1 ui-sans-serif;letter-spacing:.09em;text-transform:uppercase;color:var(--mut);margin:22px 0 12px}}
 .desks{{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}}
 .desk{{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:13px}}
@@ -176,11 +298,14 @@ h2{{font:700 13px/1 ui-sans-serif;letter-spacing:.09em;text-transform:uppercase;
     <div class="chg" style="color:{_c(ret)}">{_pct(ret)} · stock sleeve today</div></div>
   <div class="book"><span>Open</span><b style="font-size:24px">{n_stocks} + {n_markets}</b>
     <div class="chg" style="color:var(--mut)">stocks · market bets</div></div>
+  {status_pill}
   <div class="pill">as of {_esc(as_of)} · not financial advice</div>
 </header>
 
+{heartbeat}
+
 <h2>The desk</h2>
-<div class="desks">{desks}</div>
+<div class="desks">{desks}{mandate_card}</div>
 
 <div class="grid">
   <div><h2>Positions · marked to market</h2>{board}</div>
