@@ -265,6 +265,40 @@ def codex_opinion(
             "note": "no codex opinion committed yet — runs when the CLI is available"}
 
 
+def load_latest_verdicts(out_dir: Path | str | None = None) -> dict:
+    """The newest ``data/verdicts/<date>.json`` + the contract + the artifact's
+    audit hash, for the pages to render. ``{"empty": True}`` when none exists —
+    the pages then degrade honestly (no verdicts yet)."""
+    out_dir = Path(out_dir) if out_dir is not None else PATHS.root / "data" / "verdicts"
+    dated = sorted(out_dir.glob("2*.json")) if out_dir.exists() else []
+    if not dated:
+        return {"empty": True}
+    try:
+        payload = json.loads(dated[-1].read_text(encoding="utf-8"))
+        contract_path = out_dir / "contract.json"
+        contract = json.loads(contract_path.read_text(encoding="utf-8")) if contract_path.exists() \
+            else scoring_contract()
+    except (OSError, json.JSONDecodeError):
+        return {"empty": True}
+    return {
+        "empty": False,
+        "payload": payload,
+        "contract": contract,
+        "audit_sha": content_hash(payload),
+        "prior": _prior_payload(dated),
+    }
+
+
+def _prior_payload(dated: list[Path]) -> dict | None:
+    """The second-newest artifact, for the materiality change feed (None if only one)."""
+    if len(dated) < 2:
+        return None
+    try:
+        return json.loads(dated[-2].read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        return None
+
+
 def verify_contract_roundtrip(out_dir: Path | str | None = None) -> bool:
     """The written contract.json must equal the engine's live export, byte-for-byte."""
     out_dir = Path(out_dir) if out_dir is not None else PATHS.root / "data" / "verdicts"

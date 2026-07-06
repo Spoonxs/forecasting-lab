@@ -13,7 +13,12 @@ import webbrowser
 from pathlib import Path
 
 from ..config import PATHS
-from ..dashboard import collect_lab_state, render_dashboard, render_scorecard
+from ..dashboard import (
+    build_verdict_pages,
+    collect_lab_state,
+    render_dashboard,
+    render_scorecard,
+)
 
 
 def main(argv=None) -> int:
@@ -34,6 +39,10 @@ def main(argv=None) -> int:
     scorecard = out.parent / "scorecard.html"
     scorecard.write_text(render_scorecard(state), encoding="utf-8")
     print(f"Scorecard written to {scorecard}")
+
+    # the ticker recommendation pages (site/t/<SYM>.html) from the verdict artifact
+    built = build_verdict_pages(out.parent)
+    print(f"Ticker pages written: {len(built)} -> {out.parent / 't'}")
 
     # also render the dark, agentic Agent Terminal alongside it
     from ..agent_trader.terminal import render_terminal
