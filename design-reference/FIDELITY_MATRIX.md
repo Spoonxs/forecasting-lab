@@ -18,7 +18,7 @@ chips. The platform pages inherit them. Resolutions in PLATFORM_PLAN §12.*
 | Line/candle toggle, indicators, compare chart | Rallies | MISSING | Compare page exists, chart controls not specified. |
 | Splits/dividend overlays | Stock Taper | PARTIAL | Corporate actions covered in contract, UI overlay missing. |
 | Quarterly/annual financial toggle | Stock Taper/Rallies | PARTIAL | Financial frame planned; toggle not explicit. |
-| Financial statement tables | Stock Taper/Rallies | COVERED@§1/P6b | Fundamentals frame. |
+| Financial statement tables | Stock Taper/Rallies | PARTIAL (P6b fidelity pass) | The component-evidence table (graded score+confidence per driver) is built; full income/balance/cash-flow statements need a fundamentals data feed — deferred, rendered honestly as n/a until wired, never faked. |
 | Per-cell ▲/▼ financial arrows | Stock Taper/Auth captures | COVERED@§1 | Explicit. |
 | Going-well / concerning AI pairs | Stock Taper | COVERED@§1/P6b | Core borrowed structure. |
 | “What this implies” plain-English debt/metric explainers | Stock Taper/Auth captures | PARTIAL | Plain-English explanation planned, specific explainer affordance not. |

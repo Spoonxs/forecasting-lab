@@ -890,9 +890,10 @@ def render_dashboard(state) -> str:
 
     nav = "".join(
         f'<a href="{href}">{lbl}</a>' for href, lbl in [
-            ("#today", "Verdicts"), ("#now", "Movers"), ("#markets", "Odds"), ("#edges", "Edges"),
-            ("#strategies", "Arena"), ("scorecard.html", "Scorecard"), ("#agent", "Desk"),
-            ("#economy", "Macro"), ("#voices", "Watch"),
+            ("#today", "Verdicts"), ("compare.html", "Compare"), ("#now", "Movers"),
+            ("#markets", "Odds"), ("#edges", "Edges"), ("#strategies", "Arena"),
+            ("scorecard.html", "Scorecard"), ("#agent", "Desk"), ("#economy", "Macro"),
+            ("#voices", "Watch"),
         ]
     )
 

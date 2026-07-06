@@ -130,6 +130,25 @@ def test_embedded_json_cannot_break_out_of_the_script_tag():
     assert "<img src=x onerror" not in h2 and "&lt;img" in h2
 
 
+def test_chart_split_dividend_markers_render_when_present():
+    """P6b fidelity: markers draw when the corporate-actions data carries them,
+    and degrade silently (no fake markers) when it doesn't."""
+    with_markers = render_verdict_page(
+        "NVDA", _rich_row(), CONTRACT, price=100.0, spark=[10, 12, 25, 26, 27],
+        markers=[{"i": 2, "kind": "split", "label": "4:1 split"},
+                 {"i": 3, "kind": "dividend", "label": "$0.10"}],
+    )
+    assert "4:1 split" in with_markers and "$0.10" in with_markers
+    assert '<div class="mklegend">' in with_markers and "<line" in with_markers
+    no_markers = render_verdict_page("NVDA", _rich_row(), CONTRACT, price=100.0,
+                                     spark=[10, 12, 25, 26, 27])
+    assert '<div class="mklegend">' not in no_markers  # no data -> no markers, never faked
+    # malformed marker data degrades silently, never crashes (Codex review)
+    bad = render_verdict_page("NVDA", _rich_row(), CONTRACT, price=100.0, spark=[10, 12, 25],
+                              markers=[{"i": "oops"}, {"i": None}, {"nope": 1}])
+    assert bad.startswith("<!DOCTYPE html>") and '<div class="mklegend">' not in bad
+
+
 def test_news_url_scheme_is_validated():
     """Codex finding 2: javascript:/data: URLs never become clickable."""
     safe = render_verdict_page("NVDA", _rich_row(), CONTRACT,

@@ -114,15 +114,39 @@ def _price_header(symbol: str, name: str, price, day_change, moves) -> str:
             f'<div class="pxr"><div class="px">{px}</div>{chg}{chips}</div></div>')
 
 
-def _chart(spark: list | None) -> str:
+def _chart(spark: list | None, markers: list | None = None) -> str:
+    """Price sparkline + range pills, with split/dividend markers when the
+    corporate-actions data carries them (``markers`` = [{'i': idx, 'kind':
+    'split'|'dividend', 'label': str}]). Offline: honest n/a, no markers."""
     pills = "".join(f'<button class="pill{" on" if p == "1Y" else ""}" disabled>{p}</button>'
                     for p in ("1M", "3M", "6M", "1Y"))
-    if spark and len([s for s in spark if s is not None]) >= 2:
-        body = sparkline_svg([float(s) for s in spark if s is not None], width=680, height=150)
-    else:
+    series = [float(s) for s in (spark or []) if s is not None]
+    if len(series) < 2:
         body = ('<p class="na">Price chart needs the live feed — offline this instrument '
                 'has no series. Split/dividend markers appear when the data carries them.</p>')
-    return f'<div class="chart"><div class="pills">{pills}</div>{body}</div>'
+        return f'<div class="chart"><div class="pills">{pills}</div>{body}</div>'
+    svg = sparkline_svg(series, width=680, height=150)
+    mk = ""
+    if markers:
+        n = len(series)
+        lines = []
+        for m in markers:
+            try:  # malformed marker data degrades silently, never crashes the page
+                i = int(m.get("i", -1))
+            except (TypeError, ValueError):
+                continue
+            if not 0 <= i < n:
+                continue
+            x = 3 + i / (n - 1) * (680 - 6)
+            tone = DOWN if m.get("kind") == "split" else ACCENT
+            lines.append(f'<line x1="{x:.1f}" y1="0" x2="{x:.1f}" y2="150" stroke="{tone}" '
+                         f'stroke-width="1" stroke-dasharray="3 3"><title>'
+                         f'{_esc(m.get("label", m.get("kind", "")))}</title></line>')
+        if lines:
+            svg = svg.replace("</svg>", "".join(lines) + "</svg>")
+            mk = ('<div class="mklegend"><span class="mk-s">&#9474; split</span>'
+                  '<span class="mk-d">&#9474; dividend</span></div>')
+    return f'<div class="chart"><div class="pills">{pills}</div>{svg}{mk}</div>'
 
 
 def _dials(dials: dict) -> str:
@@ -269,6 +293,7 @@ def build_verdict_pages(out_dir, *, verdicts_dir=None, tier_live_worker: str = "
             day_change=None,  # no true daily change offline — the labeled moves carry the trend
             moves=moves,
             spark=card.get("spark") if card else None,
+            markers=card.get("markers") if card else None,  # split/dividend events flow when the feed carries them
             news=news, peers=peers, as_of=payload["as_of"], audit_sha=sha,
             tier_live_worker=tier_live_worker,
         )
@@ -294,6 +319,7 @@ def render_verdict_page(
     day_change=None,
     moves: list | None = None,
     spark: list | None = None,
+    markers: list | None = None,
     news: list | None = None,
     peers: list | None = None,
     analyst: dict | None = None,
@@ -340,6 +366,8 @@ h3{{font:700 12px/1.3 var(--mono);letter-spacing:.06em;text-transform:uppercase;
   color:var(--mut);border-radius:4px;padding:6px 10px}}
 .pill.on{{background:var(--ink);color:var(--paper)}}
 .chart svg{{width:100%;height:auto;display:block}}
+.mklegend{{display:flex;gap:14px;margin-top:6px;font:600 10.5px/1 var(--mono);color:var(--mut)}}
+.mklegend .mk-s{{color:var(--down)}} .mklegend .mk-d{{color:var(--accent)}}
 .verdict{{text-align:center;padding:8px 0 4px}}
 .vlabel{{font:800 34px/1.05 var(--mono);letter-spacing:.04em}}
 .vscore{{font:600 13px/1 var(--mono);color:var(--mut);margin-top:6px}}
@@ -393,7 +421,7 @@ footer{{margin-top:22px;padding-top:14px;border-top:1px solid var(--rule);font-s
 </style></head><body><div class="wrap">
 <div class="top"><a href="../index.html">&#9666; Platform</a>{MASCOTS.get("movers", "")}</div>
 
-<div class="card">{_price_header(symbol, name or symbol, price, day_change, moves)}{_chart(spark)}</div>
+<div class="card">{_price_header(symbol, name or symbol, price, day_change, moves)}{_chart(spark, markers)}</div>
 
 <div class="card">
   <div class="verdict"><div class="vlabel" style="color:{tone}" id="vlabel">{_esc(label)}</div>
