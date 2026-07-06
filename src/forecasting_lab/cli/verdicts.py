@@ -56,6 +56,11 @@ def main(argv=None) -> int:
 
     claude_path = write_claude_opinion(payload)
     print(f"claude opinion -> {claude_path.name}")
+
+    from ..dashboard.tier_live import emit_worker_allowlist
+
+    allow_path = emit_worker_allowlist()
+    print(f"worker allowlist -> {allow_path}")
     codex = codex_opinion(payload, runner=None if args.no_codex else _codex_runner)
     state = "fresh" if not codex.get("stale") else f"stale (as of {codex.get('as_of')})"
     print(f"codex opinion: {state}")

@@ -191,6 +191,10 @@ class InstrumentRegistry:
             by_prefix.extend(by_name)
         return by_prefix[:limit]
 
+    def symbols(self, kinds: tuple[str, ...] = ("stock", "etf")) -> list[str]:
+        """All listed symbols of the given kinds, sorted (the worker allowlist)."""
+        return sorted(s for s, i in self._by_symbol.items() if i.kind in kinds)
+
     def __len__(self) -> int:
         return len(self._by_symbol)
 

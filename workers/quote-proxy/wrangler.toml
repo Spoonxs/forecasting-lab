@@ -1,0 +1,8 @@
+# quote-proxy — TIER LIVE edge worker (deploy is OPTIONAL; see README.md)
+name = "flab-quote-proxy"
+main = "worker.js"
+compatibility_date = "2026-07-01"
+
+[vars]
+# LOCK CORS to the site's real origin before deploying — never "*"
+ALLOWED_ORIGIN = "https://REPLACE-ME.github.io"
