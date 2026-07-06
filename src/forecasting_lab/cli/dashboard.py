@@ -55,6 +55,12 @@ def main(argv=None) -> int:
     if build_compare_page(out.parent):
         print(f"Compare page written -> {out.parent / 'compare.html'}")
 
+    # the landing page (Sakura treatment; the marketing entry into the app)
+    from ..dashboard.landing import build_landing
+
+    land = build_landing(out.parent)
+    print(f"Landing written -> {land.name}")
+
     # also render the dark, agentic Agent Terminal alongside it
     from ..agent_trader.terminal import render_terminal
 
