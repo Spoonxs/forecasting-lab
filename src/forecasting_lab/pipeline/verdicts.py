@@ -123,9 +123,13 @@ def default_component_provider(symbol: str) -> dict[str, Component]:
     return out
 
 
+# the full profile matrix: horizon x goal x risk (27), so the client can re-label
+# every dimension the profile control exposes — including risk, which changes the
+# score via the drawdown penalty (Codex review: a risk-complete matrix).
+_RISKS = ("low", "med", "high")
 PROFILE_MATRIX = [
-    Profile(horizon=h, goal=g)
-    for h in sorted(HORIZON_MULT) for g in sorted(GOAL_MULT)
+    Profile(horizon=h, goal=g, risk=r)
+    for h in sorted(HORIZON_MULT) for g in sorted(GOAL_MULT) for r in _RISKS
 ]
 
 
@@ -145,7 +149,7 @@ def build_verdicts(
         components = {k: v for k, v in provider(symbol).items() if v is not None}
         default = compute_verdict(components, hysa_yield_pct=hysa_yield_pct)
         matrix = {
-            f"{p.horizon}|{p.goal}": compute_verdict(
+            f"{p.horizon}|{p.goal}|{p.risk}": compute_verdict(
                 components, p, hysa_yield_pct=hysa_yield_pct
             ).label
             for p in PROFILE_MATRIX

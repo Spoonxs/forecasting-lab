@@ -61,6 +61,17 @@ def _esc(s) -> str:
     return _html.escape(str(s))
 
 
+def _json_html(obj) -> str:
+    """JSON safe to embed inside a <script> tag (neutralize </script> + U+2028/9)."""
+    import json as _json
+
+    out = _json.dumps(obj)
+    for ch, esc in (("<", "\\u003c"), (">", "\\u003e"), ("&", "\\u0026"),
+                    (" ", "\\u2028"), (" ", "\\u2029")):
+        out = out.replace(ch, esc)
+    return out
+
+
 def _fmt(v, digits=3):
     try:
         return f"{float(v):.{digits}f}"
@@ -543,6 +554,73 @@ def _sortable(rows: list[dict], cols: list[tuple], *, bar_col=None, bar_max=1.0,
 
 
 # ---------------------------------------------------------------- assembly
+VERDICT_TONE = {"STRONG BUY": UP, "BUY": UP, "HOLD": MUTED, "TRIM": DOWN,
+                "AVOID": DOWN, "INSUFFICIENT EVIDENCE": FAINT}
+
+
+def _verdict_chip(row: dict) -> str:
+    sym, label = row["symbol"], row["label"]
+    tone = VERDICT_TONE.get(label, FAINT)
+    dim = " insuf" if label == "INSUFFICIENT EVIDENCE" else ""
+    short = "INSUF." if label == "INSUFFICIENT EVIDENCE" else label
+    return (f'<a class="vchip{dim}" href="t/{_esc(sym)}.html" data-m="{_esc(_json_html(row.get("matrix", {})))}">'
+            f'<span class="vc-sym">{_esc(sym)}</span>'
+            f'<span class="vc-lab" style="color:{tone}">{_esc(short)}</span></a>')
+
+
+def _platform_home(state) -> str:
+    """The platform top: hero + universe search + today's verdicts grid + the
+    profile control + the ETF core row. Replaces the old newspaper masthead."""
+    v = getattr(state, "verdicts", {}) or {}
+    rows = v.get("rows") or []
+    symbols = v.get("symbols") or []
+
+    if not rows:
+        grid = ('<p class="empty">No recommendation verdicts built yet — run '
+                '<code>flab-verdicts</code> (nightly in the cloud). Search still works '
+                'over the full universe once an artifact exists.</p>')
+        etf_row = ""
+    else:
+        shown = rows[:48]
+        grid = '<div class="vgrid">' + "".join(_verdict_chip(r) for r in shown) + "</div>"
+        etfs = [r for r in rows if r.get("is_etf")]
+        etf_row = ('<div class="etfrow"><span class="etfrow-lab">Core ETFs</span>'
+                   + "".join(_verdict_chip(r) for r in etfs) + "</div>") if etfs else ""
+
+    profile = (
+        '<div class="profctl" id="profctl">'
+        '<span class="pc-lab">For my</span>'
+        '<select id="pcH"><option value="0-1y">0–1y horizon</option>'
+        '<option value="1-5y" selected>1–5y horizon</option>'
+        '<option value="5y+">5y+ horizon</option></select>'
+        '<select id="pcG"><option value="grow" selected>growth</option>'
+        '<option value="income">income</option><option value="preserve">preserve</option></select>'
+        '<select id="pcR"><option value="low">low risk</option>'
+        '<option value="med" selected>med risk</option><option value="high">high risk</option></select>'
+        '<span class="pc-note">re-scores every verdict for your goals — reading the contract, not recomputing</span>'
+        '</div>'
+    )
+    as_of = _esc(v.get("as_of", "")) if rows else ""
+    return (
+        '<header class="phero">'
+        '<div class="pbrand">THE&nbsp;VERDICT&nbsp;DESK</div>'
+        '<div class="ptag">Investment recommendations with receipts — every verdict carries its '
+        'evidence, its confidence, and its scored track record. A personal research tool, '
+        '<b>not financial advice</b>.</div>'
+        '<div class="search"><input id="q" type="search" autocomplete="off" '
+        'placeholder="Search any stock or ETF — VOO, QQQ, NVDA, SCHD…" '
+        'aria-label="search the full universe"><div id="qres" class="qres"></div></div>'
+        f'{profile}</header>'
+        f'<section class="card" id="today"><div class="sec-head"><div>'
+        f'<div class="kicker">Today&#8217;s verdicts{" · " + as_of if as_of else ""}</div>'
+        f'<h2>What&#8217;s attractive right now?</h2></div>{MASCOTS.get("edges", "")}</div>'
+        '<p class="explain">Ranked most-attractive first for the default profile; change the '
+        'profile above and every card re-scores. Dimmed = INSUFFICIENT EVIDENCE (honest: not '
+        f'enough data to rate yet, never a guess).</p>{etf_row}{grid}</section>'
+        f'<script id="built" type="application/json">{_json_html(symbols)}</script>'
+    )
+
+
 def render_dashboard(state) -> str:
     t = state.tennis["summary"]
     sources_total = state.sources.get("total", 0)
@@ -793,9 +871,11 @@ def render_dashboard(state) -> str:
                 media_body += f"<h3>{_esc(heading)}</h3>" + _md_table(content["table"])
 
     # Rallies IA: one crisp surface per job in the sticky nav
+    platform_top = _platform_home(state)
+
     nav = "".join(
         f'<a href="{href}">{lbl}</a>' for href, lbl in [
-            ("#today", "Today"), ("#now", "Movers"), ("#markets", "Odds"), ("#edges", "Edges"),
+            ("#today", "Verdicts"), ("#now", "Movers"), ("#markets", "Odds"), ("#edges", "Edges"),
             ("#strategies", "Arena"), ("scorecard.html", "Scorecard"), ("#agent", "Desk"),
             ("#economy", "Macro"), ("#voices", "Watch"),
         ]
@@ -880,6 +960,41 @@ a {{ color:var(--accent); text-decoration:none; }}
 .qchips a {{ font:600 12px/1 var(--mono); color:var(--ink); background:var(--card); border:1px solid var(--rule);
   border-radius:999px; padding:8px 13px; }}
 .qchips a:hover {{ border-color:var(--accent); color:var(--accent); }}
+
+/* ---- P6b platform home ---- */
+.phero {{ padding:34px 0 20px; text-align:center; }}
+.pbrand {{ font:800 clamp(24px,4vw,40px)/1 var(--mono); letter-spacing:.14em; }}
+.ptag {{ font:400 14px/1.6 var(--mono); color:var(--muted); max-width:60ch; margin:12px auto 0; }}
+.ptag b {{ color:var(--ink); }}
+.search {{ position:relative; max-width:560px; margin:22px auto 0; }}
+.search input {{ width:100%; font:500 15px/1.4 var(--mono); color:var(--ink); background:var(--card);
+  border:1px solid var(--rule); border-radius:8px; padding:13px 16px; }}
+.search input:focus {{ outline:2px solid var(--accent); outline-offset:1px; }}
+.qres {{ position:absolute; left:0; right:0; top:calc(100% + 4px); z-index:30; background:var(--card);
+  border:1px solid var(--rule); border-radius:8px; overflow:hidden; text-align:left; display:none; }}
+.qres.on {{ display:block; }}
+.qres a, .qres div {{ display:flex; justify-content:space-between; gap:10px; padding:10px 14px;
+  font:500 13px/1 var(--mono); border-bottom:1px solid var(--rule); color:var(--ink); }}
+.qres a:last-child, .qres div:last-child {{ border-bottom:0; }}
+.qres a:hover {{ background:var(--paper); }}
+.qres .muted {{ color:var(--faint); }}
+.profctl {{ display:flex; flex-wrap:wrap; gap:8px; align-items:center; justify-content:center; margin:18px 0 0; }}
+.profctl .pc-lab {{ font:600 12px/1 var(--mono); color:var(--muted); text-transform:uppercase; letter-spacing:.05em; }}
+.profctl select {{ font:600 12px/1 var(--mono); color:var(--ink); background:var(--card);
+  border:1px solid var(--rule); border-radius:6px; padding:8px 10px; }}
+.profctl .pc-note {{ flex-basis:100%; text-align:center; font:400 11.5px/1.4 var(--mono); color:var(--faint); margin-top:4px; }}
+.etfrow {{ display:flex; flex-wrap:wrap; gap:6px; align-items:center; padding:12px 0; border-bottom:1px solid var(--rule); margin-bottom:14px; }}
+.etfrow-lab {{ font:700 10.5px/1 var(--mono); text-transform:uppercase; letter-spacing:.06em; color:var(--muted); margin-right:6px; }}
+.vgrid {{ display:grid; grid-template-columns:repeat(auto-fill,minmax(112px,1fr)); gap:8px; }}
+.vchip {{ display:flex; flex-direction:column; gap:4px; padding:11px 12px; border:1px solid var(--rule);
+  border-radius:6px; background:var(--card); }}
+.vchip:hover {{ border-color:var(--accent); }}
+.vchip.insuf {{ opacity:.5; }}
+.vc-sym {{ font:800 15px/1 var(--mono); }}
+.vc-lab {{ font:700 11px/1 var(--mono); letter-spacing:.03em; }}
+.enginebar {{ margin-top:26px; }}
+.engineroom-head {{ margin:8px 0 4px; }}
+.engineroom-head h2 {{ font:700 15px/1.2 var(--mono); letter-spacing:.05em; text-transform:uppercase; color:var(--muted); }}
 
 nav {{ position:sticky; top:0; z-index:20; background:rgba(250,249,246,.9);
   backdrop-filter:blur(6px); border-bottom:1px solid var(--rule); margin:22px -22px 20px;
@@ -1110,29 +1225,22 @@ a,button,.kpi {{ transition:color .15s ease, border-color .15s ease, background 
 <body>
 <div class="wrap">
 
-<header class="masthead">
-  <div class="wordmark">The Forecasting Briefing</div>
-  <div class="subword">A research bulletin on markets, sports &amp; the economy — every forecast scored on how right it actually is.</div>
-  <div class="dateline">
-    <span>{_esc(dateline)}</span>
-    <span>Research briefing</span>
-    <span>No. {issue}</span>
-    <span>{sources_total:,} sources tracked</span>
-    <span><a href="agent.html" style="color:var(--accent);font-weight:700">&#9656; Live Agent Terminal</a></span>
-    <span class="live" id="clock" data-gen="{_esc(state.generated)}">updated {_esc(state.generated)}</span>
-  </div>
-</header>
+{platform_top}
 
-<div class="lead" id="today">
-  <div class="kicker">Today's briefing</div>
-  <h1>Predictions, kept honest.</h1>
-  <p class="deck">Sports, prediction markets, stocks and the economy — forecast, then marked against reality. Click the tabs to explore; every table sorts on any column.</p>
-  {qchips}
+<div class="dateline enginebar">
+  <span>{_esc(dateline)}</span>
+  <span>{sources_total:,} sources tracked</span>
+  <span><a href="agent.html" style="color:var(--accent);font-weight:700">&#9656; Live Agent Terminal</a></span>
+  <span class="live" id="clock" data-gen="{_esc(state.generated)}">updated {_esc(state.generated)}</span>
 </div>
 
-<div class="kpis">{glance}</div>
+<div class="engineroom-head"><h2>The engine room</h2>
+  <p class="explain">Everything under the verdicts — the signals, the arena, the calibration
+  and the honest track record they&#8217;re built from. {qchips}</p></div>
 
 <nav>{nav}</nav>
+
+<div class="kpis">{glance}</div>
 
 {_section("agent", "Live · Paper", "The agent desk", "What the agent is actually doing right now: a paper book on live data. It buys the top trending stocks and takes YES/NO positions on the most-traded Kalshi/Polymarket markets by its recalibrated fair value, marks them to the current data, and logs every trade. Real data and real (paper) marks that accrue over runs — not real money.", agent_body, "paper account", mascot="desk")}
 
@@ -1258,6 +1366,61 @@ a,button,.kpi {{ transition:color .15s ease, border-color .15s ease, background 
       requestAnimationFrame(tick);
     }});
   }}
+
+  // ---- P6b: full-universe search — built symbols nav; unbuilt -> honest path ----
+  function esc(x){{ return String(x).replace(/[&<>"']/g,function(c){{
+    return {{'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}}[c]; }}); }}
+  var built={{}}, blist=[];
+  try{{ blist=JSON.parse(document.getElementById('built').textContent||'[]'); }}catch(e){{}}
+  blist.forEach(function(s){{ built[s]=true; }});  // every artifact symbol has a page (Codex: complete map)
+  var uni=null;  // full listed universe, lazy-fetched (same-origin) on first use
+  function loadUni(){{ if(uni!==null) return Promise.resolve();
+    return fetch('universe.json').then(function(r){{return r.json();}})
+      .then(function(a){{ uni={{}}; a.forEach(function(s){{uni[s]=true;}}); }})
+      .catch(function(){{ uni={{}}; }}); }}  // offline: uni stays empty, degrade honestly
+  var q=document.getElementById('q'), qres=document.getElementById('qres');
+  function safeSym(s){{ return /^[A-Z][A-Z0-9.\\-]{{0,9}}$/.test(s); }}
+  function render(s){{
+    var rows=[], seen={{}};
+    blist.forEach(function(x){{ if(x.indexOf(s)===0 && !seen[x]){{ seen[x]=1;
+      rows.push('<a href="t/'+esc(x)+'.html"><b>'+esc(x)+'</b><span class="muted">full verdict &#8594;</span></a>'); }} }});
+    if(uni){{ Object.keys(uni).forEach(function(x){{ if(rows.length<8 && x.indexOf(s)===0 && !seen[x]){{ seen[x]=1;
+      rows.push('<div><b>'+esc(x)+'</b><span class="muted">listed — add to watchlist for tomorrow&#8217;s full verdict</span></div>'); }} }}); }}
+    if(!rows.length){{
+      if(built[s]) rows.push('<a href="t/'+esc(s)+'.html"><b>'+esc(s)+'</b><span class="muted">full verdict &#8594;</span></a>');
+      else if(uni && uni[s]) rows.push('<div><b>'+esc(s)+'</b><span class="muted">listed — add to watchlist</span></div>');
+      else if(uni && safeSym(s)) rows.push('<div><b>'+esc(s)+'</b><span class="muted">not a listed US stock/ETF</span></div>');
+      else if(safeSym(s)) rows.push('<div><b>'+esc(s)+'</b><span class="muted">add to watchlist — listing check needs the online build</span></div>');
+      else rows.push('<div><span class="muted">enter a ticker symbol</span></div>');
+    }}
+    qres.innerHTML=rows.slice(0,8).join(''); qres.className='qres on';
+  }}
+  function route(){{ var s=(q.value||'').trim().toUpperCase();
+    if(!s){{qres.className='qres';qres.innerHTML='';return;}}
+    // render immediately from the built list (sync), then refine once the universe
+    // loads — but only if the query hasn't changed (Codex: no stale async results)
+    render(s);
+    loadUni().then(function(){{ if((q.value||'').trim().toUpperCase()===s) render(s); }}); }}
+  if(q){{ q.addEventListener('input',route);
+    q.addEventListener('keydown',function(e){{ if(e.key==='Enter'){{ var a=qres.querySelector('a'); if(a) location.href=a.href; }} }});
+    document.addEventListener('click',function(e){{ if(!e.target.closest('.search')) qres.className='qres'; }}); }}
+
+  // ---- P6b: profile control re-scores every verdict chip from its matrix ----
+  var VT={{'STRONG BUY':'{UP}','BUY':'{UP}','HOLD':'{MUTED}','TRIM':'{DOWN}','AVOID':'{DOWN}','INSUFFICIENT EVIDENCE':'{FAINT}'}};
+  var pH=document.getElementById('pcH'),pG=document.getElementById('pcG'),pR=document.getElementById('pcR');
+  function loadProf(){{ try{{return JSON.parse(localStorage.getItem('flab_profile'))||{{}};}}catch(e){{return {{}};}} }}
+  function saveProf(){{ localStorage.setItem('flab_profile',JSON.stringify({{horizon:pH.value,goal:pG.value,risk:pR.value}})); }}
+  function applyProf(){{
+    if(!pH) return; var key=pH.value+'|'+pG.value+'|'+pR.value;
+    document.querySelectorAll('.vchip').forEach(function(a){{
+      var m; try{{m=JSON.parse(a.getAttribute('data-m')||'{{}}');}}catch(e){{return;}}
+      var lab=m[key]; if(!lab) return; var el=a.querySelector('.vc-lab');
+      el.textContent=(lab==='INSUFFICIENT EVIDENCE')?'INSUF.':lab;
+      el.style.color=VT[lab]||'{FAINT}'; a.classList.toggle('insuf',lab==='INSUFFICIENT EVIDENCE');
+    }});
+  }}
+  if(pH){{ var p=loadProf(); if(p.horizon)pH.value=p.horizon; if(p.goal)pG.value=p.goal; if(p.risk)pR.value=p.risk;
+    [pH,pG,pR].forEach(function(s){{s.addEventListener('change',function(){{saveProf();applyProf();}});}}); applyProf(); }}
 }})();
 </script>
 </body>

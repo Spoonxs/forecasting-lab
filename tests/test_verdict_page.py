@@ -31,7 +31,7 @@ def _rich_row() -> dict:
             "backtest": {"score": 0.4, "confidence": 0.85, "detail": "OOS Sharpe 0.9"},
         },
         "missing": ["squeeze", "yield"],
-        "labels_by_profile": {"0-1y|grow": "STRONG BUY", "5y+|preserve": "HOLD", "1-5y|grow": "BUY"},
+        "labels_by_profile": {"0-1y|grow|med": "STRONG BUY", "5y+|preserve|med": "HOLD", "1-5y|grow|med": "BUY"},
         "reasons": ["excluded (no data): squeeze, yield"],
     }
 
@@ -47,7 +47,7 @@ def test_recommendation_header_dials_and_profile_matrix_are_server_rendered():
     assert html.count('class="gauge"') == 4                    # four dials
     assert "Expected-return lean" in html and "Data confidence" in html
     # the full profile matrix is embedded server-side (client-side swap, not recompute)
-    assert '"5y+|preserve"' in html and "HOLD" in html
+    assert '"5y+|preserve|med"' in html and "HOLD" in html
     assert 'id="profLabel"' in html
     assert "$194.83" in html                                   # real price shown
 
@@ -110,14 +110,14 @@ def test_build_returns_empty_without_an_artifact(tmp_path):
 def test_contract_matrix_json_is_valid_embedded():
     html = render_verdict_page("NVDA", _rich_row(), CONTRACT)
     blob = html.split('id="matrix" type="application/json">')[1].split("</script>")[0]
-    assert json.loads(blob)["1-5y|grow"] == "BUY"  # parseable, correct
+    assert json.loads(blob)["1-5y|grow|med"] == "BUY"  # parseable, correct
 
 
 # ------------------------------------------------ Codex code-review fixes pinned
 def test_embedded_json_cannot_break_out_of_the_script_tag():
     """Codex finding 1: a </script> reaching an embedded-JSON site is neutralized."""
     row = _rich_row()
-    row["labels_by_profile"]["1-5y|grow"] = "</script><img src=x onerror=alert(1)>"
+    row["labels_by_profile"]["1-5y|grow|med"] = "</script><img src=x onerror=alert(1)>"
     html = render_verdict_page("NVDA", row, CONTRACT)
     matrix_blob = html.split('id="matrix" type="application/json">')[1].split("</script>")[0]
     # the raw breakout never appears un-neutralized inside the matrix script block

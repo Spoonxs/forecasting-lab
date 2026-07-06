@@ -116,6 +116,60 @@ def _minimal_state():
     return state
 
 
+def _verdicts_state():
+    state = _minimal_state()
+    state.verdicts = {
+        "empty": False, "as_of": "2026-07-05",
+        "rows": [
+            {"symbol": "NVDA", "label": "STRONG BUY", "score": 0.62,
+             "matrix": {"1-5y|grow|med": "STRONG BUY", "5y+|preserve|med": "HOLD"}, "is_etf": False},
+            {"symbol": "VOO", "label": "BUY", "score": 0.3,
+             "matrix": {"1-5y|grow|med": "BUY", "5y+|preserve|med": "BUY"}, "is_etf": True},
+            {"symbol": "XYZ", "label": "INSUFFICIENT EVIDENCE", "score": 0.0,
+             "matrix": {}, "is_etf": False},
+        ],
+        "symbols": ["NVDA", "VOO", "XYZ"],
+    }
+    return state
+
+
+def test_home_is_the_platform_search_verdicts_profile():
+    """P6b-2: the home leads with the platform hero, search, today's verdicts
+    grid, the profile control, and the ETF row; the old briefing sits below."""
+    html = render_dashboard(_verdicts_state())
+    assert "THE" in html and "VERDICT" in html and "DESK" in html   # platform hero
+    assert 'id="q"' in html and 'placeholder="Search any stock' in html  # universe search
+    assert 'class="vgrid"' in html and 'href="t/NVDA.html"' in html  # today's verdicts grid
+    assert ">STRONG BUY<" in html or "STRONG BUY" in html
+    assert 'class="vchip insuf"' in html                            # INSUFFICIENT dimmed
+    assert 'id="pcH"' in html and 'id="pcG"' in html and 'id="pcR"' in html  # profile control
+    assert 'data-m=' in html                                        # matrices embedded for client swap
+    assert "Core ETFs" in html and 'id="built"' in html             # ETF row + built-symbol index
+    assert "esc(" in html and "fetch('universe.json')" in html      # XSS-safe search + lazy full-universe
+    assert "The engine room" in html                                # old sections demoted below
+    # no external fetches anywhere on the platform home
+    assert "fonts.googleapis" not in html and "<script src=" not in html
+    assert '<link rel="stylesheet"' not in html
+
+
+def test_profile_control_keys_include_risk_and_universe_writes(tmp_path):
+    """Codex P6b-2 fixes: the profile swap keys by horizon|goal|risk (risk is
+    real, not ignored), and the full-universe index is written for search."""
+    html = render_dashboard(_verdicts_state())
+    assert "pH.value+'|'+pG.value+'|'+pR.value" in html  # risk in the lookup key
+    from forecasting_lab.dashboard.tier_live import write_universe_json
+    p = write_universe_json(tmp_path)
+    import json
+    uni = json.loads(p.read_text(encoding="utf-8"))
+    assert len(uni) > 8000 and "NVDA" in uni and "TSLA" in uni  # full listed universe
+
+
+def test_home_degrades_without_a_verdict_artifact():
+    html = render_dashboard(_minimal_state())  # no state.verdicts set
+    assert "No recommendation verdicts built yet" in html and "flab-verdicts" in html
+    assert html.startswith("<!DOCTYPE html>")  # the rest of the page still renders
+
+
 def test_render_dashboard_is_an_interactive_visual_tool():
     html = render_dashboard(_minimal_state())
     assert html.startswith("<!DOCTYPE html>")

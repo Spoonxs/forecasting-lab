@@ -64,8 +64,9 @@ def test_no_evidence_means_insufficient_never_a_guess():
     assert payload["verdicts"]["VOO"]["label"] == "INSUFFICIENT EVIDENCE"
     assert payload["verdicts"]["NVDA"]["label"] != "INSUFFICIENT EVIDENCE"
     matrix = payload["verdicts"]["NVDA"]["labels_by_profile"]
-    assert len(matrix) == 9  # 3 horizons x 3 goals
+    assert len(matrix) == 27  # 3 horizons x 3 goals x 3 risk levels
     assert set(k.split("|")[1] for k in matrix) == {"grow", "income", "preserve"}
+    assert set(k.split("|")[2] for k in matrix) == {"low", "med", "high"}
 
 
 def test_claude_opinion_is_dated_deterministic_and_skips_insufficient(tmp_path):

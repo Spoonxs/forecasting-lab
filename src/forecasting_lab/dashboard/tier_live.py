@@ -64,6 +64,17 @@ var TIER_LIVE = {{
 """
 
 
+def write_universe_json(out_dir: Path | str) -> Path:
+    """site/universe.json — the full listed-symbol set the home search lazy-fetches
+    (same-origin) to tell 'listed but unbuilt' from 'not a listed symbol'."""
+    from ..sources.instruments import InstrumentRegistry
+
+    out = Path(out_dir) / "universe.json"
+    out.parent.mkdir(parents=True, exist_ok=True)
+    out.write_text(json.dumps(InstrumentRegistry().symbols()), encoding="utf-8")
+    return out
+
+
 def emit_worker_allowlist(path: Path | str | None = None) -> Path:
     """Generate the worker's allowlist module from the registry — the registry
     IS the allowlist (Codex review: shape validation alone leaves a general

@@ -44,6 +44,12 @@ def main(argv=None) -> int:
     built = build_verdict_pages(out.parent)
     print(f"Ticker pages written: {len(built)} -> {out.parent / 't'}")
 
+    # the full listed-symbol index for the home search (lazy-fetched, same-origin)
+    from ..dashboard.tier_live import write_universe_json
+
+    uni = write_universe_json(out.parent)
+    print(f"Universe index written -> {uni.name}")
+
     # also render the dark, agentic Agent Terminal alongside it
     from ..agent_trader.terminal import render_terminal
 

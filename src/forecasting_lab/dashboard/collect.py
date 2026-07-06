@@ -38,6 +38,7 @@ class LabState:
     feed: list = field(default_factory=list)  # the tape: picks/resolves/alerts, newest first
     scorecard: dict = field(default_factory=dict)  # the full forecast ledger for scorecard.html
     ledger: dict = field(default_factory=dict)  # the run-loop's ledger snapshots (agent terminal)
+    verdicts: dict = field(default_factory=dict)  # P6b: built recommendation pages for the home grid
 
 
 def _fit_tennis(seed: int = 0) -> dict:
@@ -250,6 +251,7 @@ def collect_lab_state(seed: int = 0) -> LabState:
     state.agent = _agent_desk(state)
     state.feed = _feed(state)
     state.scorecard = _scorecard_state()
+    state.verdicts = _home_verdicts()
     try:
         from ..agent_trader.terminal import load_ledger
 
@@ -282,6 +284,37 @@ def _feed(state) -> list:
             for b in content.get("bullets", [])[:5]:
                 items.append({"kind": "alert", "text": f"{heading}: {b}"})
     return items
+
+
+def _home_verdicts() -> dict:
+    """The built recommendation pages for the home grid + search index: each
+    symbol's default label/score + its labels_by_profile matrix (so the profile
+    control re-renders chips client-side). ``{"empty": True}`` with no artifact."""
+    try:
+        from ..pipeline.verdicts import load_latest_verdicts
+        from ..sources.instruments import CORE_ETFS
+
+        loaded = load_latest_verdicts()
+        if loaded.get("empty"):
+            return {"empty": True}
+        payload = loaded["payload"]
+        rows = []
+        for sym, r in payload["verdicts"].items():
+            rows.append({
+                "symbol": sym,
+                "label": r.get("label", "INSUFFICIENT EVIDENCE"),
+                "score": r.get("score", 0.0),
+                "matrix": r.get("labels_by_profile", {}),
+                "is_etf": sym in CORE_ETFS,
+            })
+        # attractive-first: higher score leads, INSUFFICIENT sinks to the bottom
+        order = {"STRONG BUY": 0, "BUY": 1, "HOLD": 2, "TRIM": 3, "AVOID": 4,
+                 "INSUFFICIENT EVIDENCE": 5}
+        rows.sort(key=lambda x: (order.get(x["label"], 5), -x["score"]))
+        return {"empty": False, "as_of": payload["as_of"], "rows": rows,
+                "symbols": sorted(x["symbol"] for x in rows)}
+    except Exception:  # pragma: no cover - defensive
+        return {"empty": True}
 
 
 def _scorecard_state() -> dict:

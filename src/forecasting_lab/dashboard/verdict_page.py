@@ -432,9 +432,9 @@ footer{{margin-top:22px;padding-top:14px;border-top:1px solid var(--rule);font-s
   var HN={{"0-1y":"0–1y","1-5y":"1–5y","5y+":"5y+"}};
   function profile(){{ try{{return JSON.parse(localStorage.getItem('flab_profile'))||{{}};}}catch(e){{return {{}};}} }}
   function apply(){{
-    var p=profile(), h=p.horizon||'1-5y', g=p.goal||'grow', key=h+'|'+g;
+    var p=profile(), h=p.horizon||'1-5y', g=p.goal||'grow', r=p.risk||'med', key=h+'|'+g+'|'+r;
     var lab=matrix[key]; if(!lab) return;
-    document.getElementById('profName').textContent=(HN[h]||h)+' · '+g;
+    document.getElementById('profName').textContent=(HN[h]||h)+' · '+g+' · '+r+' risk';
     var el=document.getElementById('profLabel'); el.textContent=lab;
     var tone={{'STRONG BUY':'{UP}','BUY':'{UP}','HOLD':'{MUTED}','TRIM':'{DOWN}','AVOID':'{DOWN}'}}[lab]||'{FAINT}';
     el.style.color=tone;
