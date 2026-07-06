@@ -14,7 +14,8 @@ from __future__ import annotations
 import argparse
 import traceback
 
-JOBS = ("resolve", "research", "media", "trending", "divergence", "macro", "sim", "forward", "dashboard", "alert")
+JOBS = ("resolve", "research", "media", "trending", "divergence", "macro", "sim", "forward",
+        "verdicts", "dashboard", "alert")
 
 
 def _job_resolve():
@@ -83,6 +84,16 @@ def _job_forward():
     return f"forward study marked ({int(board['live_marks'].max()) if not board.empty else 0} live marks; leader {leader})"
 
 
+def _job_verdicts():
+    # verdicts run AFTER trending/macro so the provider sees today's sidecars;
+    # codex is skipped in unattended runs (zero-key decision — the last
+    # committed opinion renders with its date)
+    from ..cli.verdicts import main as verdicts_main
+
+    verdicts_main(["--no-codex"])
+    return "verdict artifacts rebuilt -> data/verdicts/"
+
+
 def _job_dashboard():
     from ..cli.dashboard import main as dash_main
 
@@ -123,6 +134,7 @@ def main(argv=None) -> int:
         "macro": _job_macro,
         "sim": lambda: _job_sim(args.sim_bars),
         "forward": _job_forward,
+        "verdicts": _job_verdicts,
         "dashboard": _job_dashboard,
         "alert": _job_alert,
     }

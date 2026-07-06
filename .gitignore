@@ -23,6 +23,12 @@ kalshi_private_key.*
 
 # --- Data, caches, model artifacts (never commit raw or derived data) ---
 /data/
+# ...except operator config + the platform's committed verdict/opinion artifacts (P6a):
+!/data/
+/data/*
+!/data/watchlist.json
+!/data/verdicts/
+!/data/ai_opinions/
 /cache/
 *.parquet
 *.feather
