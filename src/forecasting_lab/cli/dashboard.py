@@ -14,6 +14,7 @@ from pathlib import Path
 
 from ..config import PATHS
 from ..dashboard import (
+    build_compare_page,
     build_verdict_pages,
     collect_lab_state,
     render_dashboard,
@@ -49,6 +50,10 @@ def main(argv=None) -> int:
 
     uni = write_universe_json(out.parent)
     print(f"Universe index written -> {uni.name}")
+
+    # the compare page (two tickers side-by-side, per component)
+    if build_compare_page(out.parent):
+        print(f"Compare page written -> {out.parent / 'compare.html'}")
 
     # also render the dark, agentic Agent Terminal alongside it
     from ..agent_trader.terminal import render_terminal

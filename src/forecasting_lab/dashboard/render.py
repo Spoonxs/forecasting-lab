@@ -601,6 +601,20 @@ def _platform_home(state) -> str:
         '</div>'
     )
     as_of = _esc(v.get("as_of", "")) if rows else ""
+    change_feed = ""
+    if rows:
+        from .compare import materiality_feed_html
+
+        change_feed = (
+            '<section class="card"><div class="sec-head"><div>'
+            '<div class="kicker">What changed</div>'
+            '<h2>What moved since the last build?</h2></div></div>'
+            '<p class="explain">Every verdict change, attributed to the component that '
+            'drove it — never a vague "sentiment shift". Compare any two names on the '
+            '<a href="compare.html">compare page</a>.</p>'
+            + materiality_feed_html(v.get("changes") or [], v.get("has_prior", False))
+            + "</section>"
+        )
     return (
         '<header class="phero">'
         '<div class="pbrand">THE&nbsp;VERDICT&nbsp;DESK</div>'
@@ -617,6 +631,7 @@ def _platform_home(state) -> str:
         '<p class="explain">Ranked most-attractive first for the default profile; change the '
         'profile above and every card re-scores. Dimmed = INSUFFICIENT EVIDENCE (honest: not '
         f'enough data to rate yet, never a guess).</p>{etf_row}{grid}</section>'
+        f'{change_feed}'
         f'<script id="built" type="application/json">{_json_html(symbols)}</script>'
     )
 
@@ -992,6 +1007,12 @@ a {{ color:var(--accent); text-decoration:none; }}
 .vchip.insuf {{ opacity:.5; }}
 .vc-sym {{ font:800 15px/1 var(--mono); }}
 .vc-lab {{ font:700 11px/1 var(--mono); letter-spacing:.03em; }}
+.mfeed {{ list-style:none; }}
+.mfeed li {{ display:flex; flex-wrap:wrap; gap:6px 10px; align-items:baseline; padding:8px 0; border-bottom:1px solid var(--rule); font-size:13px; }}
+.mfeed li:last-child {{ border-bottom:0; }}
+.mf-move {{ font-weight:700; font-size:12px; }}
+.mf-why {{ color:var(--muted); font-size:12px; }}
+.mf-none {{ color:var(--faint); font-size:13px; }}
 .enginebar {{ margin-top:26px; }}
 .engineroom-head {{ margin:8px 0 4px; }}
 .engineroom-head h2 {{ font:700 15px/1.2 var(--mono); letter-spacing:.05em; text-transform:uppercase; color:var(--muted); }}

@@ -311,8 +311,18 @@ def _home_verdicts() -> dict:
         order = {"STRONG BUY": 0, "BUY": 1, "HOLD": 2, "TRIM": 3, "AVOID": 4,
                  "INSUFFICIENT EVIDENCE": 5}
         rows.sort(key=lambda x: (order.get(x["label"], 5), -x["score"]))
+        # the materiality change feed: what moved since the prior build. Isolated
+        # so a malformed prior drops just the FEED, never the verdicts (Codex fix).
+        prior = loaded.get("prior")
+        try:
+            from .compare import materiality_changes
+
+            changes = materiality_changes(payload, prior)
+        except Exception:  # noqa: BLE001 - a bad prior must not hide today's verdicts
+            changes, prior = [], None
         return {"empty": False, "as_of": payload["as_of"], "rows": rows,
-                "symbols": sorted(x["symbol"] for x in rows)}
+                "symbols": sorted(x["symbol"] for x in rows),
+                "changes": changes, "has_prior": prior is not None}
     except Exception:  # pragma: no cover - defensive
         return {"empty": True}
 
