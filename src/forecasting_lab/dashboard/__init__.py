@@ -9,6 +9,7 @@ SVG. Open it in a browser; regenerate it whenever the lab moves.
 from .arena_page import build_arena_page, render_arena_page
 from .collect import collect_lab_state
 from .compare import build_compare_page, render_compare_page
+from .journal_page import build_journal_page, render_journal_page
 from .landing import build_landing, render_landing
 from .portfolio_page import build_portfolio_page, render_portfolio_page
 from .render import render_dashboard
@@ -20,4 +21,5 @@ __all__ = ["collect_lab_state", "render_dashboard", "render_scorecard",
            "render_compare_page", "build_compare_page",
            "render_landing", "build_landing",
            "render_portfolio_page", "build_portfolio_page",
-           "render_arena_page", "build_arena_page"]
+           "render_arena_page", "build_arena_page",
+           "render_journal_page", "build_journal_page"]

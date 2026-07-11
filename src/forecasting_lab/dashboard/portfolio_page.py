@@ -43,7 +43,9 @@ def _holdings_rows(ev: dict) -> str:
             f'<tr><td><a href="t/{_esc(h["symbol"])}.html">{_esc(h["symbol"])}</a></td>'
             f'<td class="num val">{h["weight"]:.0%}</td>'
             f'<td style="color:{tone}">{_esc(h["label"])}</td>'
-            f'<td class="num">{score}</td><td>{fr}</td></tr>'
+            f'<td class="num">{score}</td><td>{fr}</td>'
+            f'<td><button class="mini jbtn" data-s="{_esc(h["symbol"])}" data-a="followed">&#10003;</button>'
+            f'<button class="mini jbtn" data-s="{_esc(h["symbol"])}" data-a="ignored">&#10007;</button></td></tr>'
         )
     return "".join(rows)
 
@@ -111,6 +113,7 @@ td{{padding:8px 10px 8px 0;border-bottom:1px solid var(--rule);vertical-align:to
 button{{font:700 12px/1 var(--mono);border:1px solid var(--rule);background:var(--paper);color:var(--ink);
   border-radius:6px;padding:9px 13px;cursor:pointer}}
 button.pri{{background:var(--ink);color:var(--paper);border-color:var(--ink)}}
+button.mini{{font:600 10.5px/1 var(--mono);color:var(--mut);border-radius:4px;padding:4px 6px;margin-right:3px}}
 .tools{{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}}
 label.csv{{display:inline-flex;align-items:center;gap:6px;font:700 12px/1 var(--mono);
   border:1px solid var(--rule);border-radius:6px;padding:9px 13px;cursor:pointer}}
@@ -152,8 +155,10 @@ stay in this browser only — never uploaded, never on a server. Not financial a
     <div class="stat"><span>vs HYSA</span><b id="sHysa">{vs_hysa}</b></div>
   </div>
   <table><thead><tr><th>holding</th><th class="num">weight</th><th>verdict</th>
-    <th class="num">score</th><th>friction</th></tr></thead>
+    <th class="num">score</th><th>friction</th><th>journal</th></tr></thead>
     <tbody id="prows">{_holdings_rows(demo)}</tbody></table>
+  <p class="demo">&#10003; / &#10007; logs "I followed / ignored this" to your
+  <a href="journal.html">decision journal</a> — browser-local, scored once the horizon resolves.</p>
   <h3 style="margin-top:18px">Advice</h3>
   <div id="advice">{_advice_html(demo)}</div>
 </div>
@@ -164,7 +169,8 @@ stay in this browser only — never uploaded, never on a server. Not financial a
 <script id="contract" type="application/json">{_json_html(contract)}</script>
 <script id="verdicts" type="application/json">{_json_html(vmap)}</script>
 <script id="demo" type="application/json">{_json_html(DEMO_HOLDINGS)}</script>
-<script>{_PORTFOLIO_JS.replace("HYSA_YIELD", json.dumps(hysa_yield_pct))}</script>
+<script>{_PORTFOLIO_JS.replace("HYSA_YIELD", json.dumps(hysa_yield_pct))
+                      .replace("PAGE_ASOF", json.dumps(payload.get("as_of", "") if payload else ""))}</script>
 </body></html>"""
 
 
@@ -190,7 +196,7 @@ def build_portfolio_page(out_dir, *, verdicts_dir=None):
 _PORTFOLIO_JS = r"""
 (function(){
   function J(id){try{return JSON.parse(document.getElementById(id).textContent||'null');}catch(e){return null;}}
-  var C=J('contract'), V=J('verdicts')||{}, DEMO=J('demo')||[], HY=HYSA_YIELD;
+  var C=J('contract'), V=J('verdicts')||{}, DEMO=J('demo')||[], HY=HYSA_YIELD, AS_OF=PAGE_ASOF;
   var TONE={'STRONG BUY':'#2F7D31','BUY':'#2F7D31','HOLD':'#6B6864','TRIM':'#C6392C','AVOID':'#C6392C','INSUFFICIENT EVIDENCE':'#9A958C'};
   function esc(x){return String(x).replace(/[&<>"']/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];});}
   function load(){try{return JSON.parse(localStorage.getItem('flab_holdings'))||null;}catch(e){return null;}}
@@ -252,7 +258,9 @@ _PORTFOLIO_JS = r"""
       return '<tr><td><a href="t/'+esc(r.symbol)+'.html">'+esc(r.symbol)+'</a></td>'
         +'<td class="num val">'+Math.round(r.weight*100)+'%</td>'
         +'<td style="color:'+(TONE[r.label]||'#9A958C')+'">'+esc(r.label)+'</td>'
-        +'<td class="num">'+sc+'</td><td>'+fr+'</td></tr>';}).join('');
+        +'<td class="num">'+sc+'</td><td>'+fr+'</td>'
+        +'<td><button class="mini jbtn" data-s="'+esc(r.symbol)+'" data-a="followed">✓</button>'
+        +'<button class="mini jbtn" data-s="'+esc(r.symbol)+'" data-a="ignored">✗</button></td></tr>';}).join('');
     var ic={block:'🛑',overlap:'🔄',crowding:'⚠',friction:'⏳',cash:'💰',unrated:'∅'};
     document.getElementById('advice').innerHTML=ev.advice.length?('<ul class="advice">'+ev.advice.map(function(a){
       return '<li class="ad-'+a.kind+'"><span>'+(ic[a.kind]||'•')+'</span> '+esc(a.text)+'</li>';}).join('')+'</ul>')
@@ -263,6 +271,16 @@ _PORTFOLIO_JS = r"""
     if(isNaN(v))return; h.push(pct?{symbol:s,weight:v/100}:{symbol:s,dollars:v}); save(h);
     document.getElementById('psym').value='';document.getElementById('pamt').value='';render();}
   document.getElementById('addBtn').addEventListener('click',add);
+  // the decision journal: browser-local ONLY, shared with the ticker pages
+  document.getElementById('prows').addEventListener('click',function(ev){
+    var t=ev.target; if(!t.classList||!t.classList.contains('jbtn'))return;
+    var s=t.dataset.s, v=V[s]||{};
+    var j; try{j=JSON.parse(localStorage.getItem('flab_journal'))||[];}catch(e){j=[];}
+    j.push({date:new Date().toISOString().slice(0,10),symbol:s,
+            label:v.label||'INSUFFICIENT EVIDENCE',score:v.score!=null?v.score:null,
+            as_of:AS_OF,action:t.dataset.a});
+    localStorage.setItem('flab_journal',JSON.stringify(j));
+    t.textContent='✓ logged'; setTimeout(function(){t.textContent=t.dataset.a==='followed'?'✓':'✗';},1200);});
   document.getElementById('clearBtn').addEventListener('click',function(){localStorage.removeItem('flab_holdings');render();});
   document.getElementById('hideBtn').addEventListener('click',function(){document.body.classList.toggle('hidden');});
   // CSV import (client-side; never uploaded)
@@ -291,10 +309,13 @@ _PORTFOLIO_JS = r"""
   async function keyFrom(pass,salt){var enc=new TextEncoder();
     var k=await crypto.subtle.importKey('raw',enc.encode(pass),'PBKDF2',false,['deriveKey']);
     return crypto.subtle.deriveKey({name:'PBKDF2',salt:salt,iterations:1e5,hash:'SHA-256'},k,{name:'AES-GCM',length:256},false,['encrypt','decrypt']);}
-  document.getElementById('expBtn').addEventListener('click',async function(){var h=load();if(!h){alert('No holdings to export yet.');return;}
+  document.getElementById('expBtn').addEventListener('click',async function(){
+    var h=load(), jn; try{jn=JSON.parse(localStorage.getItem('flab_journal'))||[];}catch(e){jn=[];}
+    if(!h&&!jn.length){alert('Nothing to export yet.');return;}
+    var payload={holdings:h||[],journal:jn};   // the export covers the journal too
     var pass=prompt('Passphrase to encrypt your export:');if(!pass)return;
     var salt=crypto.getRandomValues(new Uint8Array(16)),iv=crypto.getRandomValues(new Uint8Array(12));
-    var key=await keyFrom(pass,salt),ct=await crypto.subtle.encrypt({name:'AES-GCM',iv:iv},key,new TextEncoder().encode(JSON.stringify(h)));
+    var key=await keyFrom(pass,salt),ct=await crypto.subtle.encrypt({name:'AES-GCM',iv:iv},key,new TextEncoder().encode(JSON.stringify(payload)));
     var blob=btoa(String.fromCharCode.apply(null,salt)+String.fromCharCode.apply(null,iv)+String.fromCharCode.apply(null,new Uint8Array(ct)));
     var a=document.createElement('a');a.href='data:text/plain,'+encodeURIComponent(blob);a.download='portfolio.flab';a.click();});
   document.getElementById('impBtn').addEventListener('click',function(){var inp=document.createElement('input');inp.type='file';inp.accept='.flab';
@@ -302,7 +323,12 @@ _PORTFOLIO_JS = r"""
       var pass=prompt('Passphrase to decrypt:');if(!pass)return;try{var raw=atob(String(rd.result).trim());
       var b=new Uint8Array(raw.length);for(var i=0;i<raw.length;i++)b[i]=raw.charCodeAt(i);
       var salt=b.slice(0,16),iv=b.slice(16,28),ct=b.slice(28);var key=await keyFrom(pass,salt);
-      var pt=await crypto.subtle.decrypt({name:'AES-GCM',iv:iv},key,ct);save(JSON.parse(new TextDecoder().decode(pt)));render();}
+      var pt=await crypto.subtle.decrypt({name:'AES-GCM',iv:iv},key,ct);
+      var data=JSON.parse(new TextDecoder().decode(pt));
+      if(Array.isArray(data)){save(data);}   // a pre-journal export: holdings only
+      else{if(data.holdings&&data.holdings.length)save(data.holdings);
+           if(data.journal)localStorage.setItem('flab_journal',JSON.stringify(data.journal));}
+      render();}
       catch(err){alert('Could not decrypt — wrong passphrase or corrupt file.');}};rd.readAsText(f);};inp.click();});
   render();
 })();

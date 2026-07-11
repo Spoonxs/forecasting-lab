@@ -16,6 +16,7 @@ from ..config import PATHS
 from ..dashboard import (
     build_arena_page,
     build_compare_page,
+    build_journal_page,
     build_portfolio_page,
     build_verdict_pages,
     collect_lab_state,
@@ -64,6 +65,10 @@ def main(argv=None) -> int:
     # the AI arena + the regret ledger surface (paper books, benchmarks always on)
     arena = build_arena_page(out.parent)
     print(f"Arena page written -> {arena.name}")
+
+    # the decision journal (browser-local entries join the public regret rows)
+    journal = build_journal_page(out.parent)
+    print(f"Journal page written -> {journal.name}")
 
     # the landing page (Sakura treatment; the marketing entry into the app)
     from ..dashboard.landing import build_landing

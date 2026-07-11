@@ -333,6 +333,9 @@ def render_verdict_page(
     matrix = row.get("labels_by_profile", {})
     reasons = "; ".join(row.get("reasons", []))
     sym_json = _json_html(symbol)
+    label_json = _json_html(label)
+    score_json = _json_html(score)
+    asof_json = _json_html(as_of)
 
     return f"""<!DOCTYPE html>
 <html lang="en"><head><meta charset="utf-8">
@@ -375,6 +378,10 @@ h3{{font:700 12px/1.3 var(--mono);letter-spacing:.06em;text-transform:uppercase;
   border-top:1px solid var(--rule);padding-top:12px}}
 .forprofile b{{color:var(--ink)}}
 .reasons{{color:var(--faint);font-size:12px;margin-top:8px;text-align:center}}
+.journal{{margin-top:12px;padding-top:12px;border-top:1px solid var(--rule);display:flex;
+  gap:8px;align-items:center;flex-wrap:wrap;font-size:12px;color:var(--mut)}}
+.jbtn{{font:700 11.5px/1 var(--mono);border:1px solid var(--rule);background:var(--paper);
+  color:var(--ink);border-radius:5px;padding:7px 10px;cursor:pointer}}
 .dials{{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-top:16px}}
 .gauge{{text-align:center}} .gauge svg{{width:100%;max-width:120px}}
 .g-val{{font:700 15px/1 var(--mono);fill:var(--ink)}}
@@ -431,6 +438,10 @@ footer{{margin-top:22px;padding-top:14px;border-top:1px solid var(--rule);font-s
     <b id="profLabel" style="color:{tone}">{_esc(label)}</b>
     <span id="profHint" class="na"></span></div>
   {'<div class="reasons">' + _esc(reasons) + "</div>" if reasons else ""}
+  <div class="journal"><span>Your decision (stays in this browser):</span>
+    <button class="jbtn" id="jFollow">&#10003; I followed this</button>
+    <button class="jbtn" id="jIgnore">&#10007; I ignored this</button>
+    <a href="../journal.html">journal</a><span id="jNote" class="na"></span></div>
 </div>
 
 <div class="card"><h3>Evidence — component breakdown</h3>
@@ -477,6 +488,18 @@ footer{{margin-top:22px;padding-top:14px;border-top:1px solid var(--rule);font-s
     localStorage.setItem('flab_watchlist',JSON.stringify(wl));
     b.textContent='\\u2713 '+s+' on your watchlist';
   }});
+  // the decision journal: browser-local ONLY — nothing here is ever uploaded
+  var JM={{sym:{sym_json},label:{label_json},score:{score_json},asof:{asof_json}}};
+  function jlog(action){{
+    var j; try{{j=JSON.parse(localStorage.getItem('flab_journal'))||[];}}catch(e){{j=[];}}
+    j.push({{date:new Date().toISOString().slice(0,10),symbol:JM.sym,label:JM.label,
+            score:JM.score,as_of:JM.asof,action:action}});
+    localStorage.setItem('flab_journal',JSON.stringify(j));
+    document.getElementById('jNote').textContent=
+      ' logged \\u2014 scored on your journal once the horizon resolves';
+  }}
+  document.getElementById('jFollow').addEventListener('click',function(){{jlog('followed');}});
+  document.getElementById('jIgnore').addEventListener('click',function(){{jlog('ignored');}});
 }})();
 {tier_live_js(tier_live_worker)}
 </script>
