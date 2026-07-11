@@ -638,6 +638,28 @@ def _platform_home(state) -> str:
     )
 
 
+HEALTH_TONE = {"ok": UP, "degraded": "#B8860B", "stale": DOWN, "never": FAINT}
+
+
+def _health_table(rows: list[dict]) -> str:
+    """The connector-health panel (P6d §6): one row per recurring feed, dated
+    by its own artifacts; 'never fetched' is a stated state, not a blank."""
+    if not rows:
+        return '<p class="fine">Health rows unavailable this build — stated, not hidden.</p>'
+    body = "".join(
+        f'<tr><td>{_esc(r.get("name", ""))}<span class="wmeta">{_esc(r.get("source", ""))}</span></td>'
+        f'<td>{_esc(r.get("last") or "never")}</td>'
+        f'<td>{"n/a" if r.get("age_days") is None else str(r["age_days"]) + "d"}</td>'
+        f'<td><span class="hstat" style="color:{HEALTH_TONE.get(r.get("status"), FAINT)}">'
+        f'{_esc(r.get("status", ""))}</span></td>'
+        f'<td class="hnote">{_esc(r.get("note", ""))}</td></tr>'
+        for r in rows
+    )
+    return ('<table class="htable"><thead><tr><th>connector</th><th>last artifact</th>'
+            '<th>age</th><th>status</th><th>meaning</th></tr></thead>'
+            f'<tbody>{body}</tbody></table>')
+
+
 def _since_last_visit_html(as_of: str, changes: list[dict]) -> str:
     """The changed-since-last-visit banner (P6d §12.5): pure client-side FILTER
     of the server-rendered change feed — it never recomputes a score. Silent on
@@ -1139,6 +1161,12 @@ a.kpi:hover {{ background:#fdfcf9; }}
 .visitbar a {{ color:var(--paper); text-decoration:underline; white-space:nowrap; }}
 .visitbar button {{ margin-left:auto; background:none; border:0; color:var(--paper);
   font-size:14px; cursor:pointer; }}
+.htable {{ width:100%; border-collapse:collapse; font:400 13px/1.5 var(--mono); }}
+.htable th {{ text-align:left; font:700 10.5px/1 var(--mono); text-transform:uppercase;
+  letter-spacing:.05em; color:var(--muted); border-bottom:2px solid var(--ink); padding:0 10px 8px 0; }}
+.htable td {{ padding:8px 10px 8px 0; border-bottom:1px solid var(--rule); vertical-align:top; }}
+.hstat {{ font:700 11px/1 var(--mono); text-transform:uppercase; letter-spacing:.05em; }}
+.hnote {{ color:var(--faint); font-size:11.5px; }}
 
 .tabs {{ display:inline-flex; gap:2px; border:1px solid var(--rule); border-radius:3px; padding:3px; margin-bottom:18px; }}
 .tabs button {{ font:600 12px/1 var(--sans); letter-spacing:.03em; text-transform:uppercase; color:var(--muted); background:none; border:0; padding:8px 14px; border-radius:2px; cursor:pointer; }}
@@ -1371,6 +1399,8 @@ a,button,.kpi {{ transition:color .15s ease, border-color .15s ease, background 
 {_section("record", "Track record", "The scored forecasts", "The credibility piece: real predictions, logged with a probability and scored once the outcome is known — including whether they beat the market's own price. The full ledger lives on the scorecard page.", track_body + '<p class="fine"><a href="scorecard.html">&#9656; Open the full scorecard — every forecast, hits and misses</a></p>', mascot="scorecard")}
 
 {media_section}
+
+{_section("health", "Freshness", "Is the data current?", "Every recurring connector, dated by its own artifacts and judged against a stated budget — ok, degraded, stale, or honestly never fetched. When a source ages, the surfaces built on it say so instead of pretending.", _health_table(getattr(state, "health", []) or []))}
 
 <section class="card faq reveal">
   <div class="sec-head"><div><div class="kicker">The honest bit</div><h2>Is it actually making money?</h2></div></div>

@@ -39,6 +39,7 @@ class LabState:
     scorecard: dict = field(default_factory=dict)  # the full forecast ledger for scorecard.html
     ledger: dict = field(default_factory=dict)  # the run-loop's ledger snapshots (agent terminal)
     verdicts: dict = field(default_factory=dict)  # P6b: built recommendation pages for the home grid
+    health: list = field(default_factory=list)  # P6d: connector-health rows (ok/degraded/stale/never)
 
 
 def _fit_tennis(seed: int = 0) -> dict:
@@ -235,6 +236,14 @@ def collect_lab_state(seed: int = 0) -> LabState:
     state.strategies = _strategy_cards()
     state.macro = _macro()
     state.sources = _sources()
+    try:  # P6d: the connector-health rows (today's date is the boundary clock)
+        from datetime import date as _hdate
+
+        from ..pipeline.health import connector_health
+
+        state.health = connector_health(_hdate.today())
+    except Exception:  # noqa: BLE001 - the dashboard renders without the panel
+        state.health = []
     state.forecast_log = _forecast_log()
     state.digests = {
         "trending-stocks": _latest_digest("trending-stocks"),
