@@ -14,6 +14,7 @@ from pathlib import Path
 
 from ..config import PATHS
 from ..dashboard import (
+    build_arena_page,
     build_compare_page,
     build_portfolio_page,
     build_verdict_pages,
@@ -59,6 +60,10 @@ def main(argv=None) -> int:
     # the portfolio page (holdings stay browser-local; demo book server-rendered)
     port = build_portfolio_page(out.parent)
     print(f"Portfolio page written -> {port.name}")
+
+    # the AI arena + the regret ledger surface (paper books, benchmarks always on)
+    arena = build_arena_page(out.parent)
+    print(f"Arena page written -> {arena.name}")
 
     # the landing page (Sakura treatment; the marketing entry into the app)
     from ..dashboard.landing import build_landing
