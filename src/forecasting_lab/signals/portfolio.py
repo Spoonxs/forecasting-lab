@@ -54,6 +54,22 @@ DEFAULT_RULES = [
 ]
 CROWDING_OVERLAP_FLAG = 0.35  # effective-overlap above this = a crowded, single-bet book
 OVERLAP_REPORT_FLOOR = 0.005  # pairwise doubled-exposure below this isn't worth a line
+DIVIDEND_DRAG_YIELD_PCT = 2.5  # in a TAXABLE account, yields above this earn a drag note
+
+#: the tax/account lens (P6e §B): which tax frictions apply where, with the
+#: suppression reason stated ON SCREEN when they don't. One table for both the
+#: engine and the JS mirror (shipped in the contract).
+ACCOUNT_TYPES = ("taxable", "ira", "401k")
+ACCOUNT_BEHAVIORS = {
+    "taxable": {"wash_sale": True, "dividend_drag": True,
+                "note": "taxable account — wash-sale and dividend-drag checks apply"},
+    "ira": {"wash_sale": False, "dividend_drag": False,
+            "note": "wash-sale rules don't apply in an IRA, and dividends compound "
+                    "untaxed — those checks are off here"},
+    "401k": {"wash_sale": False, "dividend_drag": False,
+             "note": "wash-sale rules don't apply in a 401k, and dividends compound "
+                     "untaxed — those checks are off here"},
+}
 
 
 @dataclass(frozen=True)
@@ -151,10 +167,12 @@ def decision_friction(sym: str, inv_share: float, label: str, cap: float,
                       *, earnings_days: int | None = None,
                       spread_pct: float | None = None,
                       recent_sale_days: int | None = None,
-                      recent_sale_loss: bool | None = None) -> list[str]:
+                      recent_sale_loss: bool | None = None,
+                      account_type: str = "taxable") -> list[str]:
     """Reasons a POSITIVE verdict may still not be actionable now (§10).
     ``inv_share`` is the position as a fraction of INVESTED capital (the same
-    basis the mandate uses). Only the checks whose data is present fire."""
+    basis the mandate uses). Only the checks whose data is present fire, and
+    the wash-sale check only in account types where the rule exists (P6e)."""
     frictions = []
     if label in ("STRONG BUY", "BUY"):
         if inv_share >= cap - 1e-9:
@@ -164,8 +182,11 @@ def decision_friction(sym: str, inv_share: float, label: str, cap: float,
             frictions.append(f"earnings in {earnings_days}d — the setup may reprice on the print")
         if spread_pct is not None and spread_pct > 0.10:
             frictions.append(f"spread {spread_pct:.0%} of mid — too wide to enter cleanly")
-        # wash-sale only applies to a prior sale AT A LOSS (Codex review)
-        if recent_sale_days is not None and 0 <= recent_sale_days < 30 and recent_sale_loss:
+        # wash-sale only applies to a prior sale AT A LOSS (Codex review), and
+        # only in a taxable account (P6e — the lens states the suppression)
+        if (ACCOUNT_BEHAVIORS.get(account_type, ACCOUNT_BEHAVIORS["taxable"])["wash_sale"]
+                and recent_sale_days is not None and 0 <= recent_sale_days < 30
+                and recent_sale_loss):
             frictions.append(f"sold at a loss {recent_sale_days}d ago — wash-sale window, "
                              "a re-buy defers the loss")
     return frictions
@@ -178,9 +199,16 @@ def evaluate_portfolio(
     rules: list[Rule] | None = None,
     hysa_yield_pct: float | None = None,
     friction_data: dict | None = None,
+    account_type: str = "taxable",
 ) -> dict:
     """The full portfolio evaluation. ``verdicts`` maps symbol -> {label, score};
-    ``friction_data`` maps symbol -> {earnings_days, spread_pct, recent_sale_days}."""
+    ``friction_data`` maps symbol -> {earnings_days, spread_pct, recent_sale_days,
+    recent_sale_loss, dividend_yield_pct}. ``account_type`` is the tax lens
+    (P6e): taxable applies the wash-sale + dividend-drag checks; IRA/401k
+    suppress them WITH the reason stated in the advice."""
+    if account_type not in ACCOUNT_TYPES:
+        raise ValueError(f"unknown account_type {account_type!r} — one of {ACCOUNT_TYPES}")
+    behaviors = ACCOUNT_BEHAVIORS[account_type]
     rules = rules or DEFAULT_RULES
     holdings = normalize_holdings(raw_holdings)
     if not holdings:
@@ -214,6 +242,7 @@ def evaluate_portfolio(
             "symbol": h.symbol, "weight": round(h.weight, 4),
             "label": label, "score": round(score, 4) if rated else None,
             "friction": decision_friction(h.symbol, inv_share, label, cap,
+                                          account_type=account_type,
                                           **{k: fd.get(h.symbol, {}).get(k)
                                              for k in ("earnings_days", "spread_pct",
                                                        "recent_sale_days", "recent_sale_loss")}),
@@ -247,8 +276,26 @@ def evaluate_portfolio(
         for fr in r["friction"]:
             advice.append(("friction", f"{r['symbol']}: attractive, but {fr}"))
 
+    # the tax/account lens (P6e): dividend drag fires ONLY in taxable accounts
+    # and ONLY on a real yield datum — never fabricated. In IRA/401k the
+    # suppressed checks are stated on screen, not silently dropped — but only
+    # when a datum they would have used actually exists.
+    tax_data_present = False
+    for h in holdings:
+        yld = fd.get(h.symbol, {}).get("dividend_yield_pct")
+        sale = fd.get(h.symbol, {}).get("recent_sale_days")
+        if yld is not None or sale is not None:
+            tax_data_present = True
+        if (behaviors["dividend_drag"] and yld is not None
+                and yld >= DIVIDEND_DRAG_YIELD_PCT):
+            advice.append(("tax", f"{h.symbol} yields {yld:.1f}% — in a taxable account "
+                                  "that's yearly tax drag; an IRA/401k shelters it"))
+    if not behaviors["dividend_drag"] and tax_data_present:
+        advice.append(("account", behaviors["note"]))
+
     return {
         "empty": False, "n_holdings": len(holdings), "cash": cash,
+        "account_type": account_type,
         "mandate_status": mandate.status,
         "holdings": rows, "overlaps": overlaps, "crowding": crowding,
         "blended_score": blended, "vs_spy": vs_spy, "vs_hysa": vs_hysa,
@@ -264,5 +311,8 @@ def portfolio_contract() -> dict:
         "min_cash_pct": next((r.value for r in DEFAULT_RULES if r.type == "min_cash_pct"), 0.0),
         "crowding_overlap_flag": CROWDING_OVERLAP_FLAG,
         "overlap_report_floor": OVERLAP_REPORT_FLOOR,
+        "account_types": list(ACCOUNT_TYPES),
+        "account_behaviors": {k: dict(v) for k, v in ACCOUNT_BEHAVIORS.items()},
+        "dividend_drag_yield_pct": DIVIDEND_DRAG_YIELD_PCT,
         "core_etf_holdings": CORE_ETF_HOLDINGS,
     }

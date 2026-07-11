@@ -52,7 +52,8 @@ def _holdings_rows(ev: dict) -> str:
 
 def _advice_html(ev: dict) -> str:
     icons = {"block": "&#128721;", "overlap": "&#128260;", "crowding": "&#9888;",
-             "friction": "&#9203;", "cash": "&#128176;", "unrated": "&#8709;"}
+             "friction": "&#9203;", "cash": "&#128176;", "unrated": "&#8709;",
+             "tax": "&#129534;", "account": "&#127974;"}
     items = "".join(f'<li class="ad-{a["kind"]}"><span>{icons.get(a["kind"], "&#8226;")}</span> '
                     f'{_esc(a["text"])}</li>' for a in ev.get("advice", []))
     return f'<ul class="advice">{items}</ul>' if items else '<p class="ok">Nothing flagged — the book is inside the mandate.</p>'
@@ -119,6 +120,12 @@ label.csv{{display:inline-flex;align-items:center;gap:6px;font:700 12px/1 var(--
   border:1px solid var(--rule);border-radius:6px;padding:9px 13px;cursor:pointer}}
 label.csv input{{display:none}}
 body.hidden .val{{filter:blur(6px);user-select:none}}
+.acct{{display:flex;gap:6px;align-items:center;flex-wrap:wrap;margin-bottom:14px;
+  font:600 11px/1 var(--mono);text-transform:uppercase;letter-spacing:.05em;color:var(--mut)}}
+.abtn{{font:700 11px/1 var(--mono);text-transform:uppercase;border:1px solid var(--rule);
+  background:var(--paper);color:var(--mut);border-radius:5px;padding:6px 10px;cursor:pointer}}
+.abtn.on{{background:var(--ink);color:var(--paper);border-color:var(--ink)}}
+.anote{{font:400 10.5px/1.4 var(--mono);text-transform:none;letter-spacing:0;color:var(--faint)}}
 .demo{{font-size:11.5px;color:var(--faint);margin-top:8px}}
 footer{{margin-top:22px;padding-top:14px;border-top:1px solid var(--rule);font-size:11.5px;color:var(--faint);text-align:center}}
 @media(prefers-reduced-motion:reduce){{*{{animation:none!important;transition:none!important}}}}
@@ -148,6 +155,12 @@ stay in this browser only — never uploaded, never on a server. Not financial a
 </div>
 
 <div class="card" id="evalCard">
+  <div class="acct"><span>Account:</span>
+    <button class="abtn" data-acct="taxable">taxable</button>
+    <button class="abtn" data-acct="ira">IRA</button>
+    <button class="abtn" data-acct="401k">401k</button>
+    <span class="anote">the tax lens — wash-sale &amp; dividend-drag checks apply only where the rules do</span>
+  </div>
   <div class="stats">
     <div class="stat"><span>Mandate</span><b><span class="mtag" id="mtag" style="background:{mtone}">{_esc(mstatus)}</span></b></div>
     <div class="stat"><span>Blended lean</span><b id="sBlended">{blended}</b></div>
@@ -201,6 +214,8 @@ _PORTFOLIO_JS = r"""
   function esc(x){return String(x).replace(/[&<>"']/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];});}
   function load(){try{return JSON.parse(localStorage.getItem('flab_holdings'))||null;}catch(e){return null;}}
   function save(h){localStorage.setItem('flab_holdings',JSON.stringify(h));}
+  function acct(){var a=localStorage.getItem('flab_account');
+    return (C.account_types||[]).indexOf(a)>=0?a:'taxable';}
   function norm(raw){var agg={};raw.forEach(function(r){var s=String(r.symbol||'').trim().toUpperCase();
     if(!s)return; var v=(r.dollars!=null)?+r.dollars:(r.weight!=null?+r.weight:NaN);
     if(isNaN(v)||v<0)return; agg[s]=(agg[s]||0)+v;});
@@ -242,6 +257,9 @@ _PORTFOLIO_JS = r"""
     if(unrated.length)advice.push({kind:'unrated',text:'no verdict yet for '+unrated.join(', ')+' — excluded from the blended score, not guessed'});
     if(cash>0)advice.push({kind:'cash',text:Math.round(cash*100)+'% in cash'});
     rows.forEach(function(r){r.friction.forEach(function(f){advice.push({kind:'friction',text:r.symbol+': attractive, but '+f});});});
+    // tax lens note (Codex review): the ENGINE emits account advice only when a
+    // tax datum exists; the client holds no tax data, so it must emit none —
+    // the control's caption (paintAcct) carries the lens description instead.
     return {rows:rows,cash:cash,mandate:block.length?'block':'pass',blended:blended,vspy:vspy,vhysa:vhysa,advice:advice};}
   function fmt(x){return x==null?'n/a':(x>=0?'+':'')+x.toFixed(3);}
   function render(){
@@ -261,7 +279,7 @@ _PORTFOLIO_JS = r"""
         +'<td class="num">'+sc+'</td><td>'+fr+'</td>'
         +'<td><button class="mini jbtn" data-s="'+esc(r.symbol)+'" data-a="followed">✓</button>'
         +'<button class="mini jbtn" data-s="'+esc(r.symbol)+'" data-a="ignored">✗</button></td></tr>';}).join('');
-    var ic={block:'🛑',overlap:'🔄',crowding:'⚠',friction:'⏳',cash:'💰',unrated:'∅'};
+    var ic={block:'🛑',overlap:'🔄',crowding:'⚠',friction:'⏳',cash:'💰',unrated:'∅',tax:'🧾',account:'🏦'};
     document.getElementById('advice').innerHTML=ev.advice.length?('<ul class="advice">'+ev.advice.map(function(a){
       return '<li class="ad-'+a.kind+'"><span>'+(ic[a.kind]||'•')+'</span> '+esc(a.text)+'</li>';}).join('')+'</ul>')
       :'<p class="ok">Nothing flagged — the book is inside the mandate.</p>';}
@@ -283,6 +301,16 @@ _PORTFOLIO_JS = r"""
     t.textContent='✓ logged'; setTimeout(function(){t.textContent=t.dataset.a==='followed'?'✓':'✗';},1200);});
   document.getElementById('clearBtn').addEventListener('click',function(){localStorage.removeItem('flab_holdings');render();});
   document.getElementById('hideBtn').addEventListener('click',function(){document.body.classList.toggle('hidden');});
+  // the account-type control (the tax lens) — a local preference, re-evaluated live
+  function paintAcct(){var a=acct();
+    Array.prototype.forEach.call(document.querySelectorAll('.abtn'),function(b){
+      b.classList.toggle('on',b.dataset.acct===a);});
+    var ab=(C.account_behaviors||{})[a], note=document.querySelector('.anote');
+    if(ab&&note)note.textContent=ab.note; /* the lens caption, from the contract */}
+  Array.prototype.forEach.call(document.querySelectorAll('.abtn'),function(b){
+    b.addEventListener('click',function(){localStorage.setItem('flab_account',b.dataset.acct);
+      paintAcct();render();});});
+  paintAcct();
   // CSV import (client-side; never uploaded)
   // quoted-field splitter: broker values like "$12,345.67" carry commas (Codex fix)
   function cells(ln){var out=[],cur='',q=false;for(var i=0;i<ln.length;i++){var ch=ln[i];

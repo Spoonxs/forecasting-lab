@@ -133,3 +133,67 @@ def test_contract_carries_the_thresholds_and_overlap_data():
     assert c["max_position_pct"] == 0.25 and c["min_cash_pct"] == 0.0
     assert c["core_etf_holdings"]["QQQ"] == CORE_ETF_HOLDINGS["QQQ"]  # same numbers for the mirror
     assert "crowding_overlap_flag" in c
+
+
+# ------------------------------------------------ P6e: the tax/account lens
+def test_tax_lens_diverges_taxable_vs_ira_on_the_same_book():
+    from forecasting_lab.signals.portfolio import ACCOUNT_BEHAVIORS
+
+    fd = {"NVDA": {"recent_sale_days": 5, "recent_sale_loss": True},
+          "VOO": {"dividend_yield_pct": 3.4}}
+    book = [{"symbol": "NVDA", "weight": 0.2}, {"symbol": "VOO", "weight": 0.2}]
+    taxable = evaluate_portfolio(book, VERDICTS, friction_data=fd)  # default: taxable
+    ira = evaluate_portfolio(book, VERDICTS, friction_data=fd, account_type="ira")
+    assert taxable["account_type"] == "taxable" and ira["account_type"] == "ira"
+    # taxable: the wash-sale friction fires and the dividend drag gets a line
+    nvda_tx = next(r for r in taxable["holdings"] if r["symbol"] == "NVDA")
+    assert any("wash-sale" in f for f in nvda_tx["friction"])
+    assert any(a["kind"] == "tax" and "VOO yields 3.4%" in a["text"]
+               for a in taxable["advice"])
+    # IRA: both suppressed, WITH the reason on screen — never silently dropped
+    nvda_ira = next(r for r in ira["holdings"] if r["symbol"] == "NVDA")
+    assert not any("wash-sale" in f for f in nvda_ira["friction"])
+    assert not any(a["kind"] == "tax" for a in ira["advice"])
+    assert any(a["kind"] == "account" and a["text"] == ACCOUNT_BEHAVIORS["ira"]["note"]
+               for a in ira["advice"])
+
+
+def test_tax_lens_stays_silent_without_a_datum():
+    import pytest
+
+    book = [{"symbol": "NVDA", "weight": 0.2}, {"symbol": "VOO", "weight": 0.2}]
+    # no tax data at all: taxable adds no tax line, IRA states no suppression
+    for acct in ("taxable", "ira", "401k"):
+        ev = evaluate_portfolio(book, VERDICTS, account_type=acct)
+        assert not any(a["kind"] in ("tax", "account") for a in ev["advice"])
+    # a below-threshold yield in taxable is not drag-worthy — silent
+    low = evaluate_portfolio(book, VERDICTS,
+                             friction_data={"VOO": {"dividend_yield_pct": 1.2}})
+    assert not any(a["kind"] == "tax" for a in low["advice"])
+    with pytest.raises(ValueError, match="account_type"):
+        evaluate_portfolio(book, VERDICTS, account_type="offshore")
+
+
+def test_contract_and_page_carry_the_account_behaviors():
+    from forecasting_lab.dashboard.portfolio_page import render_portfolio_page
+    from forecasting_lab.signals.portfolio import ACCOUNT_BEHAVIORS
+
+    c = portfolio_contract()
+    assert c["account_types"] == ["taxable", "ira", "401k"]
+    assert c["account_behaviors"] == ACCOUNT_BEHAVIORS
+    assert c["dividend_drag_yield_pct"] == 2.5
+    html = render_portfolio_page({"as_of": "2026-07-11", "verdicts": {}})
+    assert 'data-acct="ira"' in html and "flab_account" in html
+    # the mirror reads the behaviors from the contract, never re-hardcoded:
+    # the IRA note appears ONLY inside the embedded contract JSON, not the JS
+    js = html.split("<script>")[-1]
+    assert "C.account_behaviors" in js and "C.account_types" in js
+    assert "wash-sale rules don" not in js
+    blob = html.split('id="contract" type="application/json">')[1].split("</script>")[0]
+    assert "wash-sale rules don" in blob
+    # Codex review pins: the client holds NO tax data, so it never emits the
+    # account advice line (the engine gates it on a real datum) — the lens
+    # caption on the control carries the description instead; and the only
+    # client-computed friction is the cap check (nothing tax-y to suppress)
+    assert "kind:'account'" not in js and "kind:'tax'" not in js
+    assert "wash-sale" not in js and "dividend" not in js
