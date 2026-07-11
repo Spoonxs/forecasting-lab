@@ -14,7 +14,7 @@ from __future__ import annotations
 
 import argparse
 
-FAST_JOBS = ["resolve", "trending", "divergence", "macro", "dashboard"]
+FAST_JOBS = ["resolve", "trending", "divergence", "macro", "watchers", "dashboard"]
 
 
 def main(argv=None) -> int:

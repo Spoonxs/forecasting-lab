@@ -15,7 +15,7 @@ import argparse
 import traceback
 
 JOBS = ("resolve", "research", "media", "trending", "divergence", "macro", "sim", "forward",
-        "verdicts", "dashboard", "alert")
+        "verdicts", "watchers", "dashboard", "alert")
 
 
 def _job_resolve():
@@ -94,6 +94,15 @@ def _job_verdicts():
     return "verdict artifacts rebuilt -> data/verdicts/"
 
 
+def _job_watchers():
+    # after verdicts (so verdict-change sees today's artifact) and before the
+    # dashboard/alert, which both render the feed it files
+    from ..cli.watchers import main as watchers_main
+
+    watchers_main([])
+    return "watcher templates run -> feed filed (or honest skips)"
+
+
 def _job_dashboard():
     from ..cli.dashboard import main as dash_main
 
@@ -135,6 +144,7 @@ def main(argv=None) -> int:
         "sim": lambda: _job_sim(args.sim_bars),
         "forward": _job_forward,
         "verdicts": _job_verdicts,
+        "watchers": _job_watchers,
         "dashboard": _job_dashboard,
         "alert": _job_alert,
     }
