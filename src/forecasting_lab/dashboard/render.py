@@ -625,6 +625,7 @@ def _platform_home(state) -> str:
         'placeholder="Search any stock or ETF — VOO, QQQ, NVDA, SCHD…" '
         'aria-label="search the full universe"><div id="qres" class="qres"></div></div>'
         f'{profile}</header>'
+        f'{_since_last_visit_html(v.get("as_of", ""), v.get("changes") or [])}'
         f'<section class="card" id="today"><div class="sec-head"><div>'
         f'<div class="kicker">Today&#8217;s verdicts{" · " + as_of if as_of else ""}</div>'
         f'<h2>What&#8217;s attractive right now?</h2></div>{MASCOTS.get("edges", "")}</div>'
@@ -634,6 +635,44 @@ def _platform_home(state) -> str:
         f'{change_feed}'
         f'{_watchers_feed_html()}'
         f'<script id="built" type="application/json">{_json_html(symbols)}</script>'
+    )
+
+
+def _since_last_visit_html(as_of: str, changes: list[dict]) -> str:
+    """The changed-since-last-visit banner (P6d §12.5): pure client-side FILTER
+    of the server-rendered change feed — it never recomputes a score. Silent on
+    the first visit (it just stamps); dismissing stamps the build as seen."""
+    data = {"as_of": as_of,
+            "changes": [{"symbol": c.get("symbol"), "was": c.get("was"),
+                         "now": c.get("now"), "dir": c.get("dir")} for c in changes[:12]]}
+    return (
+        f'<script id="sincelast" type="application/json">{_json_html(data)}</script>'
+        '<div class="visitbar" id="visitbar" hidden>'
+        '<span id="visitmsg"></span>'
+        '<a href="#" id="visitfeed">see what changed</a>'
+        '<button id="visitdismiss" aria-label="dismiss">&#10005;</button></div>'
+        """<script>
+(function(){
+  var el=document.getElementById('sincelast'), d;
+  try{d=JSON.parse(el.textContent||'{}');}catch(e){return;}
+  if(!d.as_of)return;
+  var seen=localStorage.getItem('flab_seen_asof');
+  if(!seen){localStorage.setItem('flab_seen_asof',d.as_of);return;} // first visit: silent
+  if(d.as_of<=seen||!(d.changes||[]).length)return;                 // nothing new for you
+  var bar=document.getElementById('visitbar'),msg=document.getElementById('visitmsg');
+  var names=d.changes.map(function(c){return c.symbol+(c.dir==='up'?' ▲':c.dir==='down'?' ▼':'');});
+  msg.textContent=d.changes.length+' verdict'+(d.changes.length===1?'':'s')
+    +' moved since you were here: '+names.slice(0,6).join(', ')
+    +(names.length>6?' +'+(names.length-6)+' more':'');
+  document.getElementById('visitfeed').addEventListener('click',function(ev){
+    ev.preventDefault();
+    var t=document.querySelector('.mf-list')||document.getElementById('today');
+    if(t)t.scrollIntoView({behavior:'smooth'});});
+  document.getElementById('visitdismiss').addEventListener('click',function(){
+    localStorage.setItem('flab_seen_asof',d.as_of); bar.hidden=true;});
+  bar.hidden=false;
+})();
+</script>"""
     )
 
 
@@ -1095,6 +1134,11 @@ a.kpi:hover {{ background:#fdfcf9; }}
   background:var(--ink); color:var(--paper); border-radius:3px; padding:3px 7px; margin-right:8px; }}
 .wmeta {{ display:block; color:var(--faint); font-size:11px; margin-top:2px; }}
 .wskip {{ color:var(--faint); font-size:12px; }}
+.visitbar {{ display:flex; gap:12px; align-items:center; background:var(--ink); color:var(--paper);
+  border-radius:4px; padding:11px 16px; margin:14px 0; font:600 13px/1.4 var(--mono); }}
+.visitbar a {{ color:var(--paper); text-decoration:underline; white-space:nowrap; }}
+.visitbar button {{ margin-left:auto; background:none; border:0; color:var(--paper);
+  font-size:14px; cursor:pointer; }}
 
 .tabs {{ display:inline-flex; gap:2px; border:1px solid var(--rule); border-radius:3px; padding:3px; margin-bottom:18px; }}
 .tabs button {{ font:600 12px/1 var(--sans); letter-spacing:.03em; text-transform:uppercase; color:var(--muted); background:none; border:0; padding:8px 14px; border-radius:2px; cursor:pointer; }}
