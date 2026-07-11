@@ -15,6 +15,7 @@ from pathlib import Path
 from ..config import PATHS
 from ..dashboard import (
     build_compare_page,
+    build_portfolio_page,
     build_verdict_pages,
     collect_lab_state,
     render_dashboard,
@@ -54,6 +55,10 @@ def main(argv=None) -> int:
     # the compare page (two tickers side-by-side, per component)
     if build_compare_page(out.parent):
         print(f"Compare page written -> {out.parent / 'compare.html'}")
+
+    # the portfolio page (holdings stay browser-local; demo book server-rendered)
+    port = build_portfolio_page(out.parent)
+    print(f"Portfolio page written -> {port.name}")
 
     # the landing page (Sakura treatment; the marketing entry into the app)
     from ..dashboard.landing import build_landing

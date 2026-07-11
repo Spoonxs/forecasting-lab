@@ -53,6 +53,7 @@ DEFAULT_RULES = [
     Rule("min_cash_pct", value=0.0),
 ]
 CROWDING_OVERLAP_FLAG = 0.35  # effective-overlap above this = a crowded, single-bet book
+OVERLAP_REPORT_FLOOR = 0.005  # pairwise doubled-exposure below this isn't worth a line
 
 
 @dataclass(frozen=True)
@@ -106,7 +107,7 @@ def etf_overlap(holdings: list[Holding]) -> list[dict]:
             for name in set(ea) & set(eb):
                 book_overlap += min(ea[name], eb[name])  # the doubled dollars in this name
                 names.append(name)
-            if book_overlap > 0.005:
+            if book_overlap > OVERLAP_REPORT_FLOOR:
                 out.append({"a": a.symbol, "b": b.symbol,
                             "book_overlap": round(book_overlap, 4),
                             "names": sorted(names, key=lambda n: -min(ea[n], eb[n]))[:6]})
@@ -262,5 +263,6 @@ def portfolio_contract() -> dict:
         "max_position_pct": next((r.value for r in DEFAULT_RULES if r.type == "max_position_pct"), 0.25),
         "min_cash_pct": next((r.value for r in DEFAULT_RULES if r.type == "min_cash_pct"), 0.0),
         "crowding_overlap_flag": CROWDING_OVERLAP_FLAG,
+        "overlap_report_floor": OVERLAP_REPORT_FLOOR,
         "core_etf_holdings": CORE_ETF_HOLDINGS,
     }
