@@ -250,3 +250,12 @@ best-effort refresh + connector health panel.
 **P6e — docs + fidelity**: CLAUDE.md remade around the platform (market trends,
 stocks, ETFs, mutual funds, HYSA guidance); Codex fidelity review vs
 AUTHED_CAPTURES; mutual-fund twins + tax lens as the follow-on.
+
+**STATUS (2026-07-11): P6a–P6e ALL BUILT** — the scoring contract + full
+universe (P6a), the pages (P6b), portfolio + regret ledger + AI arena (P6c),
+journal + watchers + freshness (P6d), and mutual-fund twins + the tax lens +
+the closing fidelity pass (P6e; closures in
+`design-reference/FIDELITY_MATRIX.md` §E). Every phase landed with per-commit
+Codex reviews and property tests. What remains is the OPERATOR's switch: the
+first `git push` + Pages/Actions enablement — see
+`agent-trader/OPERATOR_RUNBOOK.md`.
