@@ -7,9 +7,17 @@ plain-text (ASCII) so it renders anywhere, including a Windows console.
 
 from __future__ import annotations
 
+import re as _re
 from datetime import date as _date
 
 from ..config import PATHS
+
+
+def _clean(text) -> str:
+    """Alerts are plain text, but Discord embeds render markdown and file-based
+    feed text isn't trusted — strip anything a downstream renderer could treat
+    as markup (Codex review), and cap the length."""
+    return _re.sub(r"[<>&*_`\[\]#|]", "", str(text or ""))[:200]
 
 
 def _newest(slug: str):
@@ -61,6 +69,20 @@ def _gather(on: _date) -> tuple[list[tuple[str, list[str]]], bool]:
     media = _top("media-watch")
     if media:
         sections.append(("Most-named by media", media))
+
+    # watcher events (P6d): the dated feed the templates filed — flagged, since
+    # every event already crossed a stated threshold
+    try:
+        from ..pipeline.digest import read_latest_data
+
+        watch_events = (read_latest_data("watchers") or {}).get("events", [])
+        if watch_events:
+            flagged = True
+            sections.append(("Watchers fired",
+                             [f"{_clean(e.get('kind'))}: {_clean(e.get('reason'))}"
+                              for e in watch_events[:5]]))
+    except Exception:  # noqa: BLE001 - the alert must send even if the feed is unreadable
+        pass
 
     try:
         from ..forwardtest import ForwardLedger

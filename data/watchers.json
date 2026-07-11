@@ -1,0 +1,7 @@
+{
+  "earnings_proximity": {"enabled": true, "days": 3},
+  "squeeze_trigger": {"enabled": true, "metric": "short_volume_ratio", "threshold": 0.6},
+  "insider_cluster": {"enabled": true, "min_insiders": 3},
+  "verdict_change": {"enabled": true, "score_move": 0.15},
+  "macro_flip": {"enabled": true, "line": 0.5}
+}

@@ -48,6 +48,7 @@ flab-intraday = "forecasting_lab.cli.intraday:main"
 flab-log-call = "forecasting_lab.agent_trader.research_log:main"
 flab-cron = "forecasting_lab.cli.cron:main"
 flab-verdicts = "forecasting_lab.cli.verdicts:main"
+flab-watchers = "forecasting_lab.cli.watchers:main"
 
 [project.urls]
 Homepage = "https://github.com/"

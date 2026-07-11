@@ -632,7 +632,39 @@ def _platform_home(state) -> str:
         'profile above and every card re-scores. Dimmed = INSUFFICIENT EVIDENCE (honest: not '
         f'enough data to rate yet, never a guess).</p>{etf_row}{grid}</section>'
         f'{change_feed}'
+        f'{_watchers_feed_html()}'
         f'<script id="built" type="application/json">{_json_html(symbols)}</script>'
+    )
+
+
+def _watchers_feed_html() -> str:
+    """The watcher-events feed (P6d): dated template firings with their audit
+    hashes; silent when no feed exists yet (honest — nothing to show)."""
+    try:
+        from ..pipeline.digest import read_latest_data
+
+        feed = read_latest_data("watchers") or {}
+    except Exception:  # noqa: BLE001 - the home page renders without the feed
+        feed = {}
+    events, skips = feed.get("events", []), feed.get("skips", [])
+    if not events and not skips:
+        return ""
+    rows = "".join(
+        f'<li><span class="wk">{_esc(e.get("kind", ""))}</span> {_esc(e.get("reason", ""))}'
+        f'<span class="wmeta">{_esc(e.get("date", ""))} · audit {_esc(str(e.get("sha256", ""))[:12])}</span></li>'
+        for e in events[:8]
+    )
+    quiet = "" if events else '<p class="explain">No watcher fired — quiet by the stated thresholds.</p>'
+    skipped = ("".join(f'<li class="wskip">{_esc(s.get("kind", ""))}: {_esc(s.get("reason", ""))}</li>'
+                       for s in skips) if skips else "")
+    return (
+        '<section class="card" id="watchers"><div class="sec-head"><div>'
+        '<div class="kicker">Watchers</div>'
+        '<h2>What the templates are watching</h2></div></div>'
+        '<p class="explain">Deterministic triggers over public data — earnings windows, squeeze '
+        'fuel, insider clusters, verdict changes, the macro line. Every firing carries its '
+        'stated reason and an audit hash; missing sources say so.</p>'
+        f'<ul class="wlist">{rows}{skipped}</ul>{quiet}</section>'
     )
 
 
@@ -1056,6 +1088,13 @@ a.kpi:hover {{ background:#fdfcf9; }}
 .card h3 {{ font:600 12px/1.3 var(--sans); letter-spacing:.05em; text-transform:uppercase; color:var(--muted); margin:24px 0 11px; }}
 .src {{ font:600 10.5px/1.4 var(--mono); color:var(--faint); white-space:nowrap; text-transform:uppercase; letter-spacing:.05em; text-align:right; }}
 .explain {{ color:var(--muted); font:400 16px/1.55 var(--serif); margin:9px 0 20px; max-width:68ch; }}
+.wlist {{ list-style:none; padding:0; margin:0; }}
+.wlist li {{ padding:9px 0; border-bottom:1px solid var(--rule); font:400 13.5px/1.5 var(--mono); }}
+.wlist li:last-child {{ border-bottom:0; }}
+.wk {{ font:700 10.5px/1 var(--mono); text-transform:uppercase; letter-spacing:.05em;
+  background:var(--ink); color:var(--paper); border-radius:3px; padding:3px 7px; margin-right:8px; }}
+.wmeta {{ display:block; color:var(--faint); font-size:11px; margin-top:2px; }}
+.wskip {{ color:var(--faint); font-size:12px; }}
 
 .tabs {{ display:inline-flex; gap:2px; border:1px solid var(--rule); border-radius:3px; padding:3px; margin-bottom:18px; }}
 .tabs button {{ font:600 12px/1 var(--sans); letter-spacing:.03em; text-transform:uppercase; color:var(--muted); background:none; border:0; padding:8px 14px; border-radius:2px; cursor:pointer; }}
