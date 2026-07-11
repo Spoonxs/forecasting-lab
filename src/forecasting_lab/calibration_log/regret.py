@@ -107,6 +107,21 @@ class RegretLedger:
                            hysa_yield_pct=payload.get("hysa_yield_pct"),
                            horizon_days=horizon_days, basket_symbols=rated)
 
+    def update_from_build(self, payload: dict, prices: dict,
+                          price_date: str | None,
+                          spy_price: float | None = None) -> dict:
+        """The nightly wiring, honestly dated (Codex review): entries open only
+        when the closes carry the SAME date as the artifact — stale sidecar
+        closes never masquerade as today's entry anchors — and resolutions are
+        marked at the closes' OWN date, never the build's."""
+        opened: list[str] = []
+        resolved: list[dict] = []
+        if prices and price_date and price_date == payload.get("as_of"):
+            opened = self.record_from_verdicts(payload, prices, spy_price=spy_price)
+        if prices and price_date:
+            resolved = self.resolve(price_date, prices, spy_price=spy_price)
+        return {"opened": opened, "resolved": resolved}
+
     # ---- resolution (marks arrive later; entries are immutable) ----------
     def resolve(self, on: str, prices: dict, spy_price: float | None = None) -> list[dict]:
         """Resolve every open entry whose horizon has elapsed by ``on``. An

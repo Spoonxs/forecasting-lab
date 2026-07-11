@@ -38,9 +38,15 @@ def test_rallies_book_table_is_server_rendered(tmp_path):
     html = render_arena_page(_marked_rows(tmp_path), EMPTY_REGRET, as_of="2026-01-02",
                              theses={"claude": "Hold the engine's conviction."})
     assert html.startswith("<!DOCTYPE html>")
-    for col in (">stock<", ">alloc<", ">entry<", ">notional<", ">worth<"):
-        assert col in html
+    # the exact Rallies column order: STOCK · ALLOCATION · P&L · P&L% · NOTIONAL · WORTH · ENTRY
+    head = html.split("<thead>")[1].split("</thead>")[0]
+    order = [">stock<", ">allocation<", ">p&amp;l<", ">p&amp;l%<",
+             ">notional<", ">worth<", ">entry<"]
+    idx = [head.find(c) for c in order]
+    assert all(i >= 0 for i in idx) and idx == sorted(idx)
     assert "TOTAL P&amp;L" in html and "AVAILABLE CASH" in html
+    # a pure-cash book (HYSA) shows its one honest line, not an empty table
+    assert "100% cash" in html
     assert 'href="t/NVDA.html"' in html                 # positions link their pages
     assert "Hold the engine&#x27;s conviction." in html or "Hold the engine" in html
 

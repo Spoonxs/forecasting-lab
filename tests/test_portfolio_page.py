@@ -37,6 +37,9 @@ def test_demo_book_is_server_rendered_and_never_blank():
     assert 'id="mtag"' in html and 'id="sSpy"' in html and 'id="sHysa"' in html
     assert "STRONG BUY" in html                       # NVDA's verdict chip
     assert "not financial advice" in html.lower()
+    # the demo book exercises the friction detector on screen (fidelity pass):
+    # NVDA sits at the cap, so "attractive, but..." advice is server-rendered
+    assert "at/over the 25% cap" in html
 
 
 def test_privacy_holdings_stay_in_the_browser():

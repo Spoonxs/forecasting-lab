@@ -113,6 +113,22 @@ def test_one_open_horizon_per_name_and_no_entry_price_skipped(tmp_path):
     assert ghost == []                                  # no entry anchor -> skipped
 
 
+def test_stale_closes_never_masquerade_as_todays_marks(tmp_path):
+    """Codex review (P6c-6): sidecar closes dated BEFORE the artifact open no
+    new entries; resolutions are marked at the closes' own date."""
+    led = _ledger(tmp_path)
+    payload = {"as_of": "2026-02-10", "verdicts": {"NVDA": {"label": "BUY", "score": 0.4}}}
+    stale = led.update_from_build(payload, {"NVDA": 100.0}, "2026-02-06")
+    assert stale["opened"] == []                        # stale date -> no fake anchors
+    fresh = led.update_from_build(payload, {"NVDA": 100.0}, "2026-02-10")
+    assert fresh["opened"] == ["2026-02-10:NVDA:30d"]
+    # resolution happens at the CLOSES' date, not the build's
+    later = {"as_of": "2026-04-01", "verdicts": {}}
+    out = led.update_from_build(later, {"NVDA": 110.0}, "2026-03-15")
+    assert out["resolved"] and out["resolved"][0]["resolution"]["date"] == "2026-03-15"
+    assert led.update_from_build(payload, {}, None) == {"opened": [], "resolved": []}
+
+
 def test_record_from_verdicts_takes_the_artifact_shape(tmp_path):
     led = _ledger(tmp_path)
     payload = {"as_of": "2026-01-01", "hysa_yield_pct": 4.0, "verdicts": {

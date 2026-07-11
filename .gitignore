@@ -29,6 +29,8 @@ kalshi_private_key.*
 !/data/watchlist.json
 !/data/verdicts/
 !/data/ai_opinions/
+!/data/arena/
+!/data/regret/
 /cache/
 *.parquet
 *.feather

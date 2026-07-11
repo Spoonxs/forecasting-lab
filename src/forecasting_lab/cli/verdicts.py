@@ -64,6 +64,30 @@ def main(argv=None) -> int:
     codex = codex_opinion(payload, runner=None if args.no_codex else _codex_runner)
     state = "fresh" if not codex.get("stale") else f"stale (as of {codex.get('as_of')})"
     print(f"codex opinion: {state}")
+
+    # the arena: Codex's book refreshes when the CLI is available; otherwise the
+    # committed book keeps racing with its original date
+    from ..agent_trader.arena_books import codex_book
+
+    book = codex_book(payload, runner=None if args.no_codex else _codex_runner)
+    print(f"codex book: {'dated ' + book['as_of'] if book else 'open slot (none committed yet)'}")
+
+    # the regret ledger: record today's attractive verdicts, resolve elapsed
+    # horizons — only with SAME-DAY closes; stale sidecar prices never
+    # masquerade as today's marks (honest skip, stated)
+    from ..calibration_log.regret import RegretLedger
+    from ..dashboard.arena_page import sidecar_prices
+
+    prices, px_date = sidecar_prices()
+    if prices and px_date:
+        ledger = RegretLedger()
+        out = ledger.update_from_build(payload, prices, px_date, spy_price=prices.get("SPY"))
+        ledger.save()
+        note = "" if px_date == payload["as_of"] else f" (closes dated {px_date} — no new entries)"
+        print(f"regret ledger: +{len(out['opened'])} tracked, "
+              f"{len(out['resolved'])} horizons resolved{note}")
+    else:
+        print("regret ledger: no closes in the trending sidecar — nothing recorded (honest skip)")
     return 0
 
 

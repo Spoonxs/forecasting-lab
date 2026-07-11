@@ -21,8 +21,10 @@ from .render import ACCENT, CARD, DOWN, FAINT, INK, MUTED, PAPER, RULE, UP, _esc
 VERDICT_TONE = {"STRONG BUY": UP, "BUY": UP, "HOLD": MUTED, "TRIM": DOWN,
                 "AVOID": DOWN, "INSUFFICIENT EVIDENCE": FAINT}
 DEMO_HOLDINGS = [
+    # NVDA sits exactly AT the 25%-of-invested cap so the demo shows the
+    # friction detector working, not just the happy path (fidelity pass)
     {"symbol": "VOO", "weight": 0.30}, {"symbol": "QQQ", "weight": 0.25},
-    {"symbol": "NVDA", "weight": 0.20}, {"symbol": "SCHD", "weight": 0.15},
+    {"symbol": "NVDA", "weight": 0.225}, {"symbol": "SCHD", "weight": 0.125},
 ]
 
 

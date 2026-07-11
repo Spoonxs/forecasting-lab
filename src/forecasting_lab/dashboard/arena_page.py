@@ -41,16 +41,21 @@ def _tone(x) -> str:
 def _book_card(row: dict, thesis: str = "") -> str:
     status = row["status"]
     chip_bg = {"benchmark": MUTED, "incubating": "#B8860B", "live": UP}.get(status, MUTED)
+    # the Rallies column order, faithfully: STOCK · ALLOCATION · P&L · P&L% ·
+    # NOTIONAL · WORTH · ENTRY (fidelity pass)
     pos_rows = "".join(
         f'<tr><td><a href="t/{_esc(p["symbol"])}.html">{_esc(p["symbol"])}</a></td>'
         f'<td class="num">{p["alloc"]:.0%}</td>'
-        f'<td class="num">{_money(p["entry"]) if p["entry"] else "n/a"}</td>'
+        f'<td class="num" style="color:{_tone(p["pnl"])}">{_money(p["pnl"])}</td>'
+        f'<td class="num" style="color:{_tone(p["pnl_pct"])}">{_pct(p["pnl_pct"])}</td>'
         f'<td class="num">{_money(p["notional"])}</td>'
         f'<td class="num">{_money(p["worth"])}</td>'
-        f'<td class="num" style="color:{_tone(p["pnl"])}">{_money(p["pnl"])}</td>'
-        f'<td class="num" style="color:{_tone(p["pnl_pct"])}">{_pct(p["pnl_pct"])}</td></tr>'
+        f'<td class="num">{_money(p["entry"]) if p["entry"] else "n/a"}</td></tr>'
         for p in row["positions"]
     )
+    if not pos_rows:  # a pure-cash book (HYSA) still shows its one honest line
+        pos_rows = ('<tr><td colspan="7" class="allcash">100% cash — earns the recorded '
+                    'HYSA yield, nothing else</td></tr>')
     total_pnl = row.get("total_pnl")
     events = row.get("events", [])
     last_ev = events[-1] if events else None
@@ -63,9 +68,9 @@ def _book_card(row: dict, thesis: str = "") -> str:
     <span class="chip" style="background:{chip_bg}">{_esc(status)}</span>
     <span class="asof">book dated {_esc(str(row.get("as_of") or "n/a"))}</span></div>
   {thesis_html}
-  <table><thead><tr><th>stock</th><th class="num">alloc</th><th class="num">entry</th>
-    <th class="num">notional</th><th class="num">worth</th><th class="num">p&amp;l</th>
-    <th class="num">p&amp;l%</th></tr></thead><tbody>{pos_rows}</tbody>
+  <table><thead><tr><th>stock</th><th class="num">allocation</th><th class="num">p&amp;l</th>
+    <th class="num">p&amp;l%</th><th class="num">notional</th><th class="num">worth</th>
+    <th class="num">entry</th></tr></thead><tbody>{pos_rows}</tbody>
   <tfoot><tr><td colspan="5">TOTAL P&amp;L</td>
     <td class="num" colspan="2" style="color:{_tone(total_pnl)}">{_money(total_pnl)}</td></tr>
   <tr><td colspan="5">AVAILABLE CASH</td>
@@ -142,6 +147,7 @@ th.num,td.num{{text-align:right}}
 td{{padding:7px 10px 7px 0;border-bottom:1px solid var(--rule)}}
 tfoot td{{font:700 12px/1.5 var(--mono);text-transform:uppercase;border-bottom:0;padding-top:10px}}
 .receipts{{color:var(--faint);font-size:11px;margin-top:10px}}
+.allcash{{color:var(--mut);font-size:12px}}
 .empty{{color:var(--mut);font-size:13px}}
 .stats{{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:12px;margin:10px 0}}
 .reg{{border:1px solid var(--rule);border-radius:4px;padding:12px}}
@@ -191,9 +197,10 @@ def build_arena_page(out_dir, *, verdicts_dir=None, ledger_path=None,
         if cb_codex:
             theses["codex"] = cb_codex.get("thesis", "")
             led.upsert_book(cb_codex)
-        prices = _sidecar_prices()
-        if prices:
-            led.mark(payload["as_of"], prices, hysa_yield_pct=payload.get("hysa_yield_pct"))
+        prices, px_date = sidecar_prices()
+        if prices and px_date:
+            # marks are dated by the closes' OWN date, never the build's
+            led.mark(px_date, prices, hysa_yield_pct=payload.get("hysa_yield_pct"))
         led.save()
         rows = led.rows(payload["as_of"], prices=prices or {})
     else:
@@ -216,13 +223,21 @@ def build_arena_page(out_dir, *, verdicts_dir=None, ledger_path=None,
     return page
 
 
-def _sidecar_prices() -> dict:
-    """Latest closes from the trending sidecar; {} offline (honest n/a marks)."""
+def sidecar_prices() -> tuple[dict, str | None]:
+    """(closes, digest date) from the newest trending sidecar; ({}, None)
+    offline. The date rides along so stale closes can never masquerade as
+    today's marks (Codex review)."""
     try:
-        from ..pipeline.digest import read_latest_data
+        import json
 
-        movers = (read_latest_data("trending-stocks") or {}).get("movers", [])
+        from ..config import PATHS
+
+        candidates = sorted(PATHS.inputs.glob("*-trending-stocks.json"))
+        if not candidates:
+            return {}, None
+        digest_date = candidates[-1].name[:10]  # <YYYY-MM-DD>-trending-stocks.json
+        movers = json.loads(candidates[-1].read_text(encoding="utf-8")).get("movers", [])
         return {str(c["ticker"]).upper(): float(c["last"])
-                for c in movers if c.get("last")}
+                for c in movers if c.get("last")}, digest_date
     except Exception:  # pragma: no cover - defensive
-        return {}
+        return {}, None
