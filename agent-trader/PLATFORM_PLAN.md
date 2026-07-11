@@ -251,7 +251,11 @@ best-effort refresh + connector health panel.
 stocks, ETFs, mutual funds, HYSA guidance); Codex fidelity review vs
 AUTHED_CAPTURES; mutual-fund twins + tax lens as the follow-on.
 
-**STATUS (2026-07-11): P6a–P6e ALL BUILT** — the scoring contract + full
+**STATUS (2026-07-11): LIVE** — pushed to
+`github.com/Spoonxs/forecasting-lab`; CI green on Ubuntu, Pages serving at
+`https://spoonxs.github.io/forecasting-lab/` (all surfaces verified live:
+home/search, ticker + fund-twin pages, portfolio, arena, journal, compare,
+scorecard), daily + intraday + deploy workflows running. P6a–P6e ALL BUILT — the scoring contract + full
 universe (P6a), the pages (P6b), portfolio + regret ledger + AI arena (P6c),
 journal + watchers + freshness (P6d), and mutual-fund twins + the tax lens +
 the closing fidelity pass (P6e; closures in
