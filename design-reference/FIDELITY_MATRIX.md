@@ -157,3 +157,26 @@ chips. The platform pages inherit them. Resolutions in PLATFORM_PLAN §12.*
 3. Add analyst consensus distribution beside the deterministic verdict, clearly labeled as external opinion.
 4. Add a compact “Changed since last visit” digest fed by the materiality ledger.
 5. Specify ticker chart controls in P6b, including split/dividend markers from the corporate-actions contract.
+
+---
+
+## (E) Final fidelity pass — CLOSED (2026-07-11, P6e-3)
+
+Codex re-audited the BUILT pages against the authed captures. Outcome:
+- **Research sub-tab IA on ticker pages** (High) — CLOSED: a Rallies-style tab
+  row (Chart / Verdict / Evidence / Analyst / News / Peers) anchor-links the
+  real sections; structure without fabricated data; reduced-motion safe.
+- **Analyst ratings-scale scaffold** (Medium) — CLOSED: the three slots
+  (consensus / avg price target / distribution) render as honest n/a offline,
+  still marked EXTERNAL OPINION; a distribution slot joins the wired branch.
+- **Net-worth home shape on the portfolio page** (Medium) — CLOSED: a
+  book-value hero (real dollars only — weights-only books say n/a, hide-values
+  blurs it) + an allocation strip with legend, live on edit.
+- **Suggested-question chips** — REFUTED: already on the home (`qchips`);
+  the audit excerpt had elided them.
+- **Contradictions on screen** — REFUTED: the receipts drawer renders
+  disagreeing evidence whenever components actually disagree (pinned in
+  tests); the sampled artifact's components genuinely agreed that day.
+- All suggestions in (D) are now shipped: hide-values (P6c), clickable
+  receipts (P6b), analyst module (P6b/P6e), since-last-visit (P6d), chart
+  markers (P6b).

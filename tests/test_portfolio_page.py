@@ -131,6 +131,24 @@ def test_overlap_floor_comes_from_the_contract_not_a_js_literal():
     assert "C.overlap_report_floor" in js and "0.005" not in js
 
 
+def test_book_hero_and_allocation_bar_are_honest():
+    """P6e fidelity pass: the net-worth-home shape — a book-value hero + an
+    allocation strip — without fabricating a dollar figure: weights-only books
+    say n/a, and the value appears only when every row carries real dollars."""
+    html = render_portfolio_page(PAYLOAD, hysa_yield_pct=5.0)
+    assert 'id="bookVal"' in html and "n/a — enter dollar amounts" in html
+    bar = html.split('id="allocbar"')[1].split("</div>")[0]
+    assert bar.count("<i ") >= len(DEMO_HOLDINGS)        # one segment per holding
+    assert "cash" in html.split('id="alloclegend"')[1].split("</div>")[0]
+    js = html.split("<script>")[-1]
+    assert "r.dollars>0" in js                            # value only from real dollars
+    assert "demo book (weights only)" in js               # the demo never fakes a total
+    assert 'id="bookVal" class="val"' in html             # hide-values blurs the total too
+    # Codex review: an emptied/all-invalid book falls back to the demo view —
+    # the hero and legend can never go stale against localStorage
+    assert "if(!rows.length){hold=null;rows=norm(DEMO);}" in js
+
+
 def test_home_nav_links_the_portfolio_page():
     from forecasting_lab.dashboard.collect import collect_lab_state
     from forecasting_lab.dashboard.render import render_dashboard

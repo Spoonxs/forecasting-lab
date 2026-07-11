@@ -130,6 +130,21 @@ def test_embedded_json_cannot_break_out_of_the_script_tag():
     assert "<img src=x onerror" not in h2 and "&lt;img" in h2
 
 
+def test_research_tabs_and_analyst_scaffold_are_rallies_shaped():
+    """P6e fidelity pass: the Rallies research sub-tab IA exists (anchor tabs to
+    real sections — structure without fabricated data) and the analyst module
+    keeps the ratings-scale shape offline as honest n/a slots."""
+    html = render_verdict_page("NVDA", _rich_row(), CONTRACT)
+    tabs = html.split('class="rtabs"')[1].split("</div>")[0]
+    for anchor in ("#chart", "#verdict", "#evidence", "#analyst", "#news", "#peers"):
+        assert f'href="{anchor}"' in tabs
+        assert f'id="{anchor[1:]}"' in html              # every tab lands on a real section
+    assert ">consensus<" in html and ">avg price target<" in html and ">distribution<" in html
+    assert "External opinion" in html                    # still clearly third-party
+    assert 'class="na">n/a</b>' in html                  # offline: honest empty slots
+    assert "scroll-behavior:auto" in html                # reduced motion respected
+
+
 def test_chart_split_dividend_markers_render_when_present():
     """P6b fidelity: markers draw when the corporate-actions data carries them,
     and degrade silently (no fake markers) when it doesn't."""

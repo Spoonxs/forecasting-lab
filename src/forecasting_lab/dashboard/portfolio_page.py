@@ -50,6 +50,27 @@ def _holdings_rows(ev: dict) -> str:
     return "".join(rows)
 
 
+ALLOC_PALETTE = ("#2F7D31", "#1D5C2E", "#B8860B", "#6B6864", "#C6392C", "#8A5A00")
+
+
+def _alloc_bar(ev: dict) -> str:
+    """The allocation strip (Rallies net-worth-home shape, honestly ours): one
+    segment per holding by weight, cash last — weights only, nothing priced."""
+    segs, legend = [], []
+    rows = ev.get("holdings", [])
+    for i, h in enumerate(rows):
+        color = ALLOC_PALETTE[i % len(ALLOC_PALETTE)]
+        segs.append(f'<i style="width:{h["weight"] * 100:.1f}%;background:{color}"></i>')
+        legend.append(f'<span><i style="background:{color}"></i>{_esc(h["symbol"])} '
+                      f'{h["weight"]:.0%}</span>')
+    cash = ev.get("cash", 0.0)
+    if cash > 0.004:
+        segs.append(f'<i style="width:{cash * 100:.1f}%;background:{FAINT}"></i>')
+        legend.append(f'<span><i style="background:{FAINT}"></i>cash {cash:.0%}</span>')
+    return (f'<div class="allocbar" id="allocbar">{"".join(segs)}</div>'
+            f'<div class="alloclegend" id="alloclegend">{"".join(legend)}</div>')
+
+
 def _advice_html(ev: dict) -> str:
     icons = {"block": "&#128721;", "overlap": "&#128260;", "crowding": "&#9888;",
              "friction": "&#9203;", "cash": "&#128176;", "unrated": "&#8709;",
@@ -120,6 +141,13 @@ label.csv{{display:inline-flex;align-items:center;gap:6px;font:700 12px/1 var(--
   border:1px solid var(--rule);border-radius:6px;padding:9px 13px;cursor:pointer}}
 label.csv input{{display:none}}
 body.hidden .val{{filter:blur(6px);user-select:none}}
+.bookhero{{margin-bottom:16px;padding-bottom:14px;border-bottom:1px solid var(--rule)}}
+.bh-val span{{display:block;font:600 10px/1 var(--mono);text-transform:uppercase;color:var(--mut);margin-bottom:4px}}
+.bh-val b{{font:800 24px/1.2 var(--mono)}}
+.allocbar{{display:flex;height:14px;border-radius:4px;overflow:hidden;margin-top:12px;background:var(--rule)}}
+.allocbar i{{display:block;height:100%}}
+.alloclegend{{display:flex;gap:12px;flex-wrap:wrap;margin-top:7px;font:600 11px/1 var(--mono);color:var(--mut)}}
+.alloclegend i{{display:inline-block;width:9px;height:9px;border-radius:2px;margin-right:4px;vertical-align:-1px}}
 .acct{{display:flex;gap:6px;align-items:center;flex-wrap:wrap;margin-bottom:14px;
   font:600 11px/1 var(--mono);text-transform:uppercase;letter-spacing:.05em;color:var(--mut)}}
 .abtn{{font:700 11px/1 var(--mono);text-transform:uppercase;border:1px solid var(--rule);
@@ -160,6 +188,11 @@ stay in this browser only — never uploaded, never on a server. Not financial a
     <button class="abtn" data-acct="ira">IRA</button>
     <button class="abtn" data-acct="401k">401k</button>
     <span class="anote">the tax lens — wash-sale &amp; dividend-drag checks apply only where the rules do</span>
+  </div>
+  <div class="bookhero">
+    <div class="bh-val"><span>Book value</span>
+      <b id="bookVal" class="val">n/a — enter dollar amounts to see it</b></div>
+    {_alloc_bar(demo)}
   </div>
   <div class="stats">
     <div class="stat"><span>Mandate</span><b><span class="mtag" id="mtag" style="background:{mtone}">{_esc(mstatus)}</span></b></div>
@@ -262,9 +295,29 @@ _PORTFOLIO_JS = r"""
     // the control's caption (paintAcct) carries the lens description instead.
     return {rows:rows,cash:cash,mandate:block.length?'block':'pass',blended:blended,vspy:vspy,vhysa:vhysa,advice:advice};}
   function fmt(x){return x==null?'n/a':(x>=0?'+':'')+x.toFixed(3);}
+  var PAL=['#2F7D31','#1D5C2E','#B8860B','#6B6864','#C6392C','#8A5A00'];
+  function paintBook(raw,ev){
+    var el=document.getElementById('bookVal');
+    if(el){var dollars=raw&&raw.length&&raw.every(function(r){return r.dollars>0;});
+      el.textContent=dollars?('$'+raw.reduce(function(a,r){return a+r.dollars;},0)
+        .toLocaleString(undefined,{maximumFractionDigits:2}))
+        :(raw?'n/a — enter dollar amounts to see it':'n/a — demo book (weights only)');}
+    var bar=document.getElementById('allocbar'),leg=document.getElementById('alloclegend');
+    if(!bar||!leg)return; var segs='',lg='';
+    ev.rows.forEach(function(r,i){var c=PAL[i%PAL.length];
+      segs+='<i style="width:'+(r.weight*100).toFixed(1)+'%;background:'+c+'"></i>';
+      lg+='<span><i style="background:'+c+'"></i>'+esc(r.symbol)+' '+Math.round(r.weight*100)+'%</span>';});
+    if(ev.cash>0.004){segs+='<i style="width:'+(ev.cash*100).toFixed(1)+'%;background:#9A958C"></i>';
+      lg+='<span><i style="background:#9A958C"></i>cash '+Math.round(ev.cash*100)+'%</span>';}
+    bar.innerHTML=segs; leg.innerHTML=lg;}
   function render(){
-    var hold=load(); var ev=evalBook(norm(hold||DEMO));
+    // an emptied or all-invalid book falls back to the DEMO view — nothing on
+    // screen may go stale against localStorage (Codex review)
+    var hold=load(); var rows=norm(hold||DEMO);
+    if(!rows.length){hold=null;rows=norm(DEMO);}
+    var ev=evalBook(rows);
     if(ev.empty)return;
+    paintBook(hold,ev);
     document.getElementById('sBlended').textContent=fmt(ev.blended);
     document.getElementById('sSpy').textContent=fmt(ev.vspy);
     document.getElementById('sHysa').textContent=fmt(ev.vhysa);

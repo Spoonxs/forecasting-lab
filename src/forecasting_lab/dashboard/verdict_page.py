@@ -223,13 +223,19 @@ def _receipts(symbol: str, row: dict, as_of: str, audit_sha: str) -> str:
 
 
 def _analyst_module(consensus: dict | None) -> str:
+    # the Rallies ratings-scale shape is preserved even offline (fidelity pass):
+    # the three slots — consensus, avg price target, distribution — render as
+    # honest n/a scaffolding rather than collapsing into a paragraph
     if not consensus:
-        body = ('<p class="na">n/a — the analyst-consensus feed is not configured. '
-                'When wired it renders the external consensus label + average price target '
-                'with a staleness stamp, clearly marked as third-party opinion.</p>')
+        body = ('<div class="ac"><div><span>consensus</span><b class="na">n/a</b></div>'
+                '<div><span>avg price target</span><b class="na">n/a</b></div>'
+                '<div><span>distribution</span><b class="na">n/a</b></div></div>'
+                '<p class="na">The analyst-consensus feed is not configured — when wired, '
+                'third-party ratings render here with a staleness stamp. Never our verdict.</p>')
     else:
         body = (f'<div class="ac"><div><span>consensus</span><b>{_esc(consensus["label"])}</b></div>'
                 f'<div><span>avg price target</span><b>{_esc(consensus.get("target", "n/a"))}</b></div>'
+                f'<div><span>distribution</span><b>{_esc(consensus.get("distribution", "n/a"))}</b></div>'
                 f'<div><span>as of</span><b>{_esc(consensus.get("as_of", "n/a"))}</b></div></div>')
     return (f'<div class="ext"><div class="ext-tag">External opinion</div>'
             f'<h3>Analyst consensus</h3>{body}</div>')
@@ -423,6 +429,12 @@ h3{{font:700 12px/1.3 var(--mono);letter-spacing:.06em;text-transform:uppercase;
   border-top:1px solid var(--rule);padding-top:12px}}
 .forprofile b{{color:var(--ink)}}
 .reasons{{color:var(--faint);font-size:12px;margin-top:8px;text-align:center}}
+.rtabs{{display:inline-flex;gap:2px;border:1px solid var(--rule);border-radius:4px;padding:3px;
+  margin-bottom:12px;background:var(--card)}}
+.rtabs a{{font:600 11px/1 var(--mono);letter-spacing:.04em;text-transform:uppercase;
+  color:var(--mut);padding:7px 11px;border-radius:3px}}
+.rtabs a:hover{{background:var(--paper);color:var(--ink)}}
+html{{scroll-behavior:smooth}}
 .fundnote{{font-size:12.5px;color:var(--mut);border-left:3px solid var(--accent)}}
 .fundtag{{font:700 10px/1 var(--mono);text-transform:uppercase;letter-spacing:.06em;
   background:var(--accent);color:#fff;border-radius:3px;padding:3px 7px;margin-right:6px}}
@@ -472,13 +484,15 @@ tr.miss td{{color:var(--faint)}}
 footer{{margin-top:22px;padding-top:14px;border-top:1px solid var(--rule);font-size:11.5px;color:var(--faint);text-align:center}}
 @media(max-width:620px){{.dials{{grid-template-columns:repeat(2,1fr)}}
   .wellcon{{grid-template-columns:1fr}} .wellcon>div:first-child{{border-right:0;border-bottom:1px solid var(--rule)}}}}
-@media(prefers-reduced-motion:reduce){{*{{animation:none!important;transition:none!important}}}}
+@media(prefers-reduced-motion:reduce){{*{{animation:none!important;transition:none!important}}
+  html{{scroll-behavior:auto}}}}
 </style></head><body><div class="wrap">
 <div class="top"><a href="../index.html">&#9666; Platform</a>{MASCOTS.get("movers", "")}</div>
 {fund_note}
-<div class="card">{_price_header(symbol, name or symbol, price, day_change, moves)}{_chart(spark, markers)}</div>
+<div class="rtabs"><a href="#chart">Chart</a><a href="#verdict">Verdict</a><a href="#evidence">Evidence</a><a href="#analyst">Analyst</a><a href="#news">News</a><a href="#peers">Peers</a></div>
+<div class="card" id="chart">{_price_header(symbol, name or symbol, price, day_change, moves)}{_chart(spark, markers)}</div>
 
-<div class="card">
+<div class="card" id="verdict">
   <div class="verdict"><div class="vlabel" style="color:{tone}" id="vlabel">{_esc(label)}</div>
     <div class="vscore">score {score:+.3f} · default profile (1–5y · grow)</div></div>
   {_dials(row.get("dials", {}))}
@@ -492,17 +506,17 @@ footer{{margin-top:22px;padding-top:14px;border-top:1px solid var(--rule);font-s
     <a href="../journal.html">journal</a><span id="jNote" class="na"></span></div>
 </div>
 
-<div class="card"><h3>Evidence — component breakdown</h3>
+<div class="card" id="evidence"><h3>Evidence — component breakdown</h3>
   {_components_table(row.get("components", {}), row.get("missing", []))}
   {_well_concerning(row.get("components", {}))}
   {_receipts(symbol, row, as_of, audit_sha)}
 </div>
 
-<div class="card">{_analyst_module(analyst)}</div>
+<div class="card" id="analyst">{_analyst_module(analyst)}</div>
 
-<div class="card"><h3>Recent headlines</h3>{_news(news)}</div>
+<div class="card" id="news"><h3>Recent headlines</h3>{_news(news)}</div>
 
-<div class="card"><h3>Peers</h3>{_peer_strip(peers, symbol) or '<p class="na">No sibling pages built yet.</p>'}
+<div class="card" id="peers"><h3>Peers</h3>{_peer_strip(peers, symbol) or '<p class="na">No sibling pages built yet.</p>'}
   <div style="margin-top:16px"><button class="cta" id="watchBtn">+ Add {_esc(symbol)} to watchlist</button>
     <p class="cta-note">Watchlisting promotes {_esc(symbol)} to the nightly <b>full</b> tier —
     every component, scored and audit-hashed. Until then, on-demand symbols show a
