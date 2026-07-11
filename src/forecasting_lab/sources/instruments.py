@@ -46,16 +46,61 @@ CORE_ETFS: dict[str, dict] = {
     "IWM": {"expense_ratio": 0.0019, "benchmark": "Russell 2000"},
     "DIA": {"expense_ratio": 0.0016, "benchmark": "Dow Jones Industrial Average"},
     "SCHD": {"expense_ratio": 0.0006, "benchmark": "Dow Jones US Dividend 100"},
+    "VXUS": {"expense_ratio": 0.0005, "benchmark": "Total international ex-US"},
+    "BND": {"expense_ratio": 0.0003, "benchmark": "US total bond market"},
+}
+
+#: common index mutual funds -> their ETF twins (same exposure), expense
+#: ratios as published. The fee delta is the whole point: "same exposure,
+#: Nx the fee" is a real, checkable statement (P6e §3).
+MUTUAL_FUND_TWINS: dict[str, dict] = {
+    "VTSAX": {"twin": "VTI", "expense_ratio": 0.0004,
+              "name": "Vanguard Total Stock Market Index Fund Admiral Shares"},
+    "VFIAX": {"twin": "VOO", "expense_ratio": 0.0004,
+              "name": "Vanguard 500 Index Fund Admiral Shares"},
+    "FXAIX": {"twin": "VOO", "expense_ratio": 0.00015,
+              "name": "Fidelity 500 Index Fund"},
+    "SWPPX": {"twin": "VOO", "expense_ratio": 0.0002,
+              "name": "Schwab S&P 500 Index Fund"},
+    "SWTSX": {"twin": "VTI", "expense_ratio": 0.0003,
+              "name": "Schwab Total Stock Market Index Fund"},
+    "FSKAX": {"twin": "VTI", "expense_ratio": 0.00015,
+              "name": "Fidelity Total Market Index Fund"},
+    "VTIAX": {"twin": "VXUS", "expense_ratio": 0.0009,
+              "name": "Vanguard Total International Stock Index Fund Admiral Shares"},
+    "VBTLX": {"twin": "BND", "expense_ratio": 0.0004,
+              "name": "Vanguard Total Bond Market Index Fund Admiral Shares"},
 }
 
 HYSA_SYMBOL = "CASH.HYSA"
+
+
+def fund_twin(symbol: str) -> dict | None:
+    """The twin card for a mutual fund: fund + twin symbols, both expense
+    ratios, and the fee multiple (None when either ratio is unknown — the
+    callout is honest or absent, never guessed)."""
+    meta = MUTUAL_FUND_TWINS.get((symbol or "").strip().upper())
+    if not meta:
+        return None
+    twin_er = CORE_ETFS.get(meta["twin"], {}).get("expense_ratio")
+    fund_er = meta["expense_ratio"]
+    multiple = round(fund_er / twin_er, 1) if fund_er and twin_er else None
+    return {"fund": (symbol or "").strip().upper(), "twin": meta["twin"],
+            "name": meta["name"], "fund_expense_ratio": fund_er,
+            "twin_expense_ratio": twin_er, "fee_multiple": multiple}
+
+
+def funds_for_twin(etf: str) -> list[str]:
+    """Every mapped mutual fund whose twin is this ETF (bidirectional lookup)."""
+    key = (etf or "").strip().upper()
+    return sorted(f for f, m in MUTUAL_FUND_TWINS.items() if m["twin"] == key)
 
 
 @dataclass(frozen=True)
 class Instrument:
     symbol: str
     name: str
-    kind: str  # "stock" | "etf" | "cash"
+    kind: str  # "stock" | "etf" | "mutual_fund" | "cash" | "other"
     exchange: str
     expense_ratio: float | None = None
     benchmark: str | None = None
@@ -135,6 +180,13 @@ class InstrumentRegistry:
             HYSA_SYMBOL, "High-yield savings (cash benchmark)", "cash", "—",
             benchmark="3-month T-bill / EFFR", yield_pct=None,
         )
+        # the common index mutual funds, searchable like everything else and
+        # scored via their ETF twins (P6e §3)
+        for sym, meta in MUTUAL_FUND_TWINS.items():
+            self._by_symbol[sym] = Instrument(
+                sym, meta["name"], "mutual_fund", "—",
+                expense_ratio=meta["expense_ratio"], benchmark=f"ETF twin: {meta['twin']}",
+            )
 
     def refresh(self, http: HttpClient | None = None) -> bool:
         """Replace the bundle with the live directories. False (bundle kept) on

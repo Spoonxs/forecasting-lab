@@ -71,7 +71,9 @@ def write_universe_json(out_dir: Path | str) -> Path:
 
     out = Path(out_dir) / "universe.json"
     out.parent.mkdir(parents=True, exist_ok=True)
-    out.write_text(json.dumps(InstrumentRegistry().symbols()), encoding="utf-8")
+    # mutual funds are searchable too (P6e) — their pages score via ETF twins
+    out.write_text(json.dumps(InstrumentRegistry().symbols(
+        kinds=("stock", "etf", "mutual_fund"))), encoding="utf-8")
     return out
 
 

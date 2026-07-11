@@ -299,7 +299,50 @@ def build_verdict_pages(out_dir, *, verdicts_dir=None, tier_live_worker: str = "
         )
         (out_dir / f"{safe}.html").write_text(html, encoding="utf-8")
         built.append(sym)
+
+    # mutual funds render via their ETF twins (P6e §3): the twin's verdict,
+    # clearly labeled, with the fee delta on screen. No price is shown — a
+    # fund NAV is not the ETF's price, and n/a is honest. Funds are reachable
+    # by search but do NOT join the home grid (`built` stays ETF/stock-only).
+    from ..sources.instruments import MUTUAL_FUND_TWINS, fund_twin
+
+    built_set = {s.upper() for s in built}
+    for fund_sym in sorted(MUTUAL_FUND_TWINS):
+        card = fund_twin(fund_sym)
+        if not card or card["twin"].upper() not in built_set:
+            continue  # unrated twin -> no fund page; search says add-to-watchlist
+        twin_row = payload["verdicts"][card["twin"]]
+        inst = registry.get(fund_sym)
+        html = render_verdict_page(
+            fund_sym, twin_row, contract,
+            name=inst.name if inst else fund_sym,
+            peers=[card["twin"]],
+            as_of=payload["as_of"], audit_sha=sha,
+            tier_live_worker=tier_live_worker, fund=card,
+        )
+        (out_dir / f"{fund_sym}.html").write_text(html, encoding="utf-8")
     return built
+
+
+def _fund_banner(fund: dict | None) -> str:
+    """The mutual-fund provenance banner (P6e §3): the page's verdict belongs
+    to the ETF twin — same exposure — and the fee delta is on screen. The fee
+    multiple renders only when both ratios are known (never guessed)."""
+    if not fund:
+        return ""
+    fund_er, twin_er = fund.get("fund_expense_ratio"), fund.get("twin_expense_ratio")
+    fees = (f"Fees: {fund_er:.2%} (fund) vs {twin_er:.2%} (ETF)"
+            if fund_er is not None and twin_er is not None else "Fee comparison: n/a")
+    mult = fund.get("fee_multiple")
+    callout = ""
+    if mult is not None and mult >= 1.5:
+        callout = f" — same exposure, ~{mult:g}x the fee"
+    elif mult is not None and mult <= 0.67:
+        callout = f" — same exposure, and the fund is the cheaper wrapper (~{mult:g}x)"
+    return (f'<div class="card fundnote"><span class="fundtag">Mutual fund</span> '
+            f'<b>{_esc(fund.get("fund", ""))}</b> is scored via its ETF twin '
+            f'<a href="{_esc(fund.get("twin", ""))}.html">{_esc(fund.get("twin", ""))}</a> '
+            f'— the same market exposure in an ETF wrapper. {_esc(fees)}{_esc(callout)}.</div>')
 
 
 def _peer_strip(peers: list | None, current: str) -> str:
@@ -326,6 +369,7 @@ def render_verdict_page(
     as_of: str = "",
     audit_sha: str = "",
     tier_live_worker: str = "",
+    fund: dict | None = None,
 ) -> str:
     label = row.get("label", INSUFFICIENT)
     tone = LABEL_TONE.get(label, FAINT)
@@ -336,6 +380,7 @@ def render_verdict_page(
     label_json = _json_html(label)
     score_json = _json_html(score)
     asof_json = _json_html(as_of)
+    fund_note = _fund_banner(fund)
 
     return f"""<!DOCTYPE html>
 <html lang="en"><head><meta charset="utf-8">
@@ -378,6 +423,9 @@ h3{{font:700 12px/1.3 var(--mono);letter-spacing:.06em;text-transform:uppercase;
   border-top:1px solid var(--rule);padding-top:12px}}
 .forprofile b{{color:var(--ink)}}
 .reasons{{color:var(--faint);font-size:12px;margin-top:8px;text-align:center}}
+.fundnote{{font-size:12.5px;color:var(--mut);border-left:3px solid var(--accent)}}
+.fundtag{{font:700 10px/1 var(--mono);text-transform:uppercase;letter-spacing:.06em;
+  background:var(--accent);color:#fff;border-radius:3px;padding:3px 7px;margin-right:6px}}
 .journal{{margin-top:12px;padding-top:12px;border-top:1px solid var(--rule);display:flex;
   gap:8px;align-items:center;flex-wrap:wrap;font-size:12px;color:var(--mut)}}
 .jbtn{{font:700 11.5px/1 var(--mono);border:1px solid var(--rule);background:var(--paper);
@@ -427,7 +475,7 @@ footer{{margin-top:22px;padding-top:14px;border-top:1px solid var(--rule);font-s
 @media(prefers-reduced-motion:reduce){{*{{animation:none!important;transition:none!important}}}}
 </style></head><body><div class="wrap">
 <div class="top"><a href="../index.html">&#9666; Platform</a>{MASCOTS.get("movers", "")}</div>
-
+{fund_note}
 <div class="card">{_price_header(symbol, name or symbol, price, day_change, moves)}{_chart(spark, markers)}</div>
 
 <div class="card">

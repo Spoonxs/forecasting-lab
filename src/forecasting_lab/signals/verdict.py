@@ -295,4 +295,14 @@ def scoring_contract() -> dict:
                              "hysa_yield_pct": ">= 0"},
             "rounding": 4,
         },
+        # mutual funds are scored via their ETF twins (P6e §3); the mapping
+        # ships IN the contract so no client ever re-hardcodes it
+        "mutual_fund_twins": _twin_contract(),
     }
+
+
+def _twin_contract() -> dict:
+    from ..sources.instruments import MUTUAL_FUND_TWINS, fund_twin
+
+    return {f: {k: v for k, v in fund_twin(f).items() if k != "fund"}
+            for f in sorted(MUTUAL_FUND_TWINS)}
