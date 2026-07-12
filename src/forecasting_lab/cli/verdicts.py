@@ -77,7 +77,7 @@ def main(argv=None) -> int:
         except Exception as exc:  # noqa: BLE001 - the run continues, honestly thinner
             print(f"price panel: skipped ({type(exc).__name__}: {exc}) — "
                   "components degrade to what's cached")
-    from ..pipeline.providers import build_real_provider
+    from ..pipeline.providers import build_real_provider, coverage_stats
 
     provider, manifest = build_real_provider(symbols, as_of=as_of)
     if panel_receipt is not None:
@@ -85,12 +85,14 @@ def main(argv=None) -> int:
     payload = build_verdicts(symbols, provider, hysa_yield_pct=hysa_yield_pct())
     path, sha = write_verdicts(payload)
 
-    # the run manifest (Codex planning consult): what evidence existed and why
-    # the rest is missing — the coverage dashboard reads this
+    # the run manifest + the acceptance gates (P8-4): what evidence existed,
+    # why the rest is missing, and whether tonight met the bar — a miss is
+    # LOUD, never silently shipped as success
     import json as _json
 
     from ..config import PATHS
 
+    manifest["coverage"] = coverage_stats(payload, manifest)
     mdir = PATHS.root / "data" / "verdicts"
     (mdir / f"manifest-{payload['as_of']}.json").write_text(
         _json.dumps(manifest, sort_keys=True), encoding="utf-8")
@@ -98,6 +100,15 @@ def main(argv=None) -> int:
                                         encoding="utf-8")
     avail = manifest["components_available"]
     print("manifest: " + ", ".join(f"{k}={v}" for k, v in sorted(avail.items())))
+    cov = manifest["coverage"]
+    gate_line = (f"coverage: {cov['rated']}/{cov['n_symbols']} rated "
+                 f"({cov['pct_rated']:.0%}), median {cov['median_components']} "
+                 f"components, {cov['panel_failures']} panel failures")
+    if cov["gate_passed"]:
+        print(f"[gate ok] {gate_line}")
+    else:
+        print(f"[GATE MISSED] {gate_line} — below the {cov['gate_pct_rated']:.0%} "
+              "bar; the site ships honest INSUFFICIENT states, not fabricated labels")
     print(f"verdicts -> {path.name} ({payload['n_symbols']} symbols, audit {sha[:12]})")
     if not verify_contract_roundtrip():  # unconditional — assert dies under -O (Codex review)
         raise RuntimeError("contract.json does not match the engine export — refusing to ship")
@@ -122,12 +133,25 @@ def main(argv=None) -> int:
     print(f"codex book: {'dated ' + book['as_of'] if book else 'open slot (none committed yet)'}")
 
     # the regret ledger: record today's attractive verdicts, resolve elapsed
-    # horizons — only with SAME-DAY closes; stale sidecar prices never
-    # masquerade as today's marks (honest skip, stated)
+    # horizons — only with SAME-DAY closes; stale prices never masquerade as
+    # today's marks (honest skip, stated). P8-4: the PRICE PANEL is the
+    # preferred source — every rated name can open an entry, not just the
+    # ~25 trending movers; the sidecar remains the fallback.
     from ..calibration_log.regret import RegretLedger
     from ..dashboard.arena_page import sidecar_prices
 
-    prices, px_date = sidecar_prices()
+    prices, px_date = {}, None
+    try:
+        from ..pipeline.prices import panel_frame
+
+        frame = panel_frame(symbols)
+        if not frame.empty:
+            px_date = str(frame.index[-1])
+            prices = {s: float(v) for s, v in frame.iloc[-1].items() if v == v}
+    except Exception:  # noqa: BLE001 - fall back to the sidecar below
+        prices = {}
+    if not prices:
+        prices, px_date = sidecar_prices()
     if prices and px_date:
         ledger = RegretLedger()
         out = ledger.update_from_build(payload, prices, px_date, spy_price=prices.get("SPY"))

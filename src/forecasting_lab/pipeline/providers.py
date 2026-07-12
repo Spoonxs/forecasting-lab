@@ -185,6 +185,7 @@ def build_real_provider(symbols: list[str], *, as_of: date,
         return comps
 
     manifest = {
+        "schema_version": 1,
         "as_of": as_of.isoformat(),
         "panel_symbols": int(len(frame.columns)) if not frame.empty else 0,
         "panel_rows": int(len(frame)) if not frame.empty else 0,
@@ -211,3 +212,34 @@ def build_real_provider(symbols: list[str], *, as_of: date,
         },
     }
     return provider, manifest
+
+
+# ------------------------------------------------------------- the gates
+RATED_GATE = 0.60  # the P8 acceptance bar: this share of the tier must rate
+
+
+def coverage_stats(payload: dict, manifest: dict) -> dict:
+    """The nightly acceptance numbers (Codex planning consult): published in
+    the manifest and on the coverage panel; a miss is stated LOUDLY, never
+    silently shipped as success."""
+    verdicts = payload.get("verdicts", {})
+    n = len(verdicts) or 1
+    rated = sum(1 for r in verdicts.values()
+                if not str(r.get("label", "")).startswith("INSUFFICIENT"))
+    import statistics
+
+    comp_counts = [len(r.get("components", {})) for r in verdicts.values()]
+    # a true median (Codex review): the upper-middle shortcut overstated
+    # coverage on even counts ([0,0,3,3] read as 3 instead of 1.5)
+    median_components = float(statistics.median(comp_counts)) if comp_counts else 0.0
+    failures = len((manifest.get("panel_run") or {}).get("failed", []))
+    stats = {
+        "n_symbols": len(verdicts),
+        "rated": rated,
+        "pct_rated": round(rated / n, 4),
+        "median_components": median_components,
+        "panel_failures": failures,
+        "gate_pct_rated": RATED_GATE,
+        "gate_passed": (rated / n) >= RATED_GATE,
+    }
+    return stats

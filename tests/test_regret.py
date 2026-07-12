@@ -114,14 +114,24 @@ def test_one_open_horizon_per_name_and_no_entry_price_skipped(tmp_path):
 
 
 def test_stale_closes_never_masquerade_as_todays_marks(tmp_path):
-    """Codex review (P6c-6): sidecar closes dated BEFORE the artifact open no
-    new entries; resolutions are marked at the closes' own date."""
+    """Codex review (P6c-6) + P8-4: entries anchor to the CLOSES' own date
+    within a small stated lag (a weekend build uses Friday's close — the exact
+    close its verdicts came from); older closes open nothing; resolutions are
+    marked at the closes' own date."""
     led = _ledger(tmp_path)
     payload = {"as_of": "2026-02-10", "verdicts": {"NVDA": {"label": "BUY", "score": 0.4}}}
     stale = led.update_from_build(payload, {"NVDA": 100.0}, "2026-02-06")
-    assert stale["opened"] == []                        # stale date -> no fake anchors
+    assert stale["opened"] == []                        # 4d old -> stale, no anchor
     fresh = led.update_from_build(payload, {"NVDA": 100.0}, "2026-02-10")
     assert fresh["opened"] == ["2026-02-10:NVDA:30d"]
+    # P8-4: a weekend/pre-market build anchors to the recent close, DATED BY IT
+    led2 = _ledger(tmp_path / "b")
+    saturday = {"as_of": "2026-02-14", "verdicts": {"NVDA": {"label": "BUY", "score": 0.4}}}
+    out = led2.update_from_build(saturday, {"NVDA": 100.0}, "2026-02-13")  # Friday close
+    assert out["opened"] == ["2026-02-13:NVDA:30d"]     # the close's date, not the build's
+    # and a close dated AFTER the artifact never anchors (negative lag)
+    weird = led2.update_from_build(saturday, {"NVDA": 100.0}, "2026-02-16")
+    assert weird["opened"] == []
     # resolution happens at the CLOSES' date, not the build's
     later = {"as_of": "2026-04-01", "verdicts": {}}
     out = led.update_from_build(later, {"NVDA": 110.0}, "2026-03-15")

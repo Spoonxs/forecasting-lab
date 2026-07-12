@@ -107,17 +107,29 @@ class RegretLedger:
                            hysa_yield_pct=payload.get("hysa_yield_pct"),
                            horizon_days=horizon_days, basket_symbols=rated)
 
+    MAX_ENTRY_LAG_DAYS = 3  # a build may anchor to a close this recent (a
+    # weekend or pre-market build uses Friday's close — the exact close its
+    # verdicts were computed from); anything older is stale and never opens
+
     def update_from_build(self, payload: dict, prices: dict,
                           price_date: str | None,
                           spy_price: float | None = None) -> dict:
-        """The nightly wiring, honestly dated (Codex review): entries open only
-        when the closes carry the SAME date as the artifact — stale sidecar
-        closes never masquerade as today's entry anchors — and resolutions are
-        marked at the closes' OWN date, never the build's."""
+        """The nightly wiring, honestly dated: entries anchor to the CLOSES'
+        own date (the observable event the verdicts were computed from), never
+        the build's — a weekend/pre-market build with Friday's closes opens
+        entries dated Friday (P8-4 fix: the same-date rule silently kept
+        nightly builds from EVER opening). Closes older than the small stated
+        lag stay stale and open nothing; resolutions always mark at the
+        closes' own date."""
         opened: list[str] = []
         resolved: list[dict] = []
-        if prices and price_date and price_date == payload.get("as_of"):
-            opened = self.record_from_verdicts(payload, prices, spy_price=spy_price)
+        as_of = payload.get("as_of")
+        if prices and price_date and as_of:
+            lag = _days_between(price_date, as_of)
+            if 0 <= lag <= self.MAX_ENTRY_LAG_DAYS:
+                anchored = {**payload, "as_of": price_date}
+                opened = self.record_from_verdicts(anchored, prices,
+                                                   spy_price=spy_price)
         if prices and price_date:
             resolved = self.resolve(price_date, prices, spy_price=spy_price)
         return {"opened": opened, "resolved": resolved}

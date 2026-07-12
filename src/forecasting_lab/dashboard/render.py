@@ -638,6 +638,47 @@ def _platform_home(state) -> str:
     )
 
 
+def _coverage_panel_html(manifest_path=None) -> str:
+    """The P8-4 coverage panel: the run manifest's gates + component
+    availability + missingness reasons, server-rendered; honest empty state
+    before the first manifested run."""
+    import json as _json
+
+    if manifest_path is None:
+        from ..config import PATHS
+
+        manifest_path = PATHS.root / "data" / "verdicts" / "manifest.json"
+    path = manifest_path
+    try:
+        m = _json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return ('<p class="fine">No run manifest yet — coverage numbers appear '
+                'with the first P8 nightly build.</p>')
+    cov = m.get("coverage") or {}
+    avail = m.get("components_available") or {}
+    reasons = m.get("missing_reasons") or {}
+    gate = cov.get("gate_passed")
+    gate_html = ""
+    if cov:
+        tone = UP if gate else DOWN
+        word = "GATE OK" if gate else "GATE MISSED"
+        gate_html = (
+            f'<p style="font:700 13px/1.5 var(--mono)"><span class="hstat" '
+            f'style="color:{tone}">{word}</span> — {cov.get("rated", 0)}/'
+            f'{cov.get("n_symbols", 0)} rated ({cov.get("pct_rated", 0):.0%} vs the '
+            f'{cov.get("gate_pct_rated", 0):.0%} bar) · median '
+            f'{cov.get("median_components", 0)} components · '
+            f'{cov.get("panel_failures", 0)} panel failures · as of '
+            f'{_esc(str(m.get("as_of", "n/a")))}</p>')
+    rows = "".join(
+        f'<tr><td>{_esc(name)}</td><td>{int(avail.get(name, 0))}</td>'
+        f'<td class="hnote">{_esc(str(reasons.get(name) or "—"))}</td></tr>'
+        for name in sorted(set(avail) | set(reasons)))
+    return (gate_html + '<table class="htable"><thead><tr><th>evidence</th>'
+            '<th>names covered</th><th>why the rest is missing</th></tr></thead>'
+            f'<tbody>{rows}</tbody></table>')
+
+
 HEALTH_TONE = {"ok": UP, "degraded": "#B8860B", "stale": DOWN, "never": FAINT}
 
 
@@ -1399,6 +1440,8 @@ a,button,.kpi {{ transition:color .15s ease, border-color .15s ease, background 
 {_section("record", "Track record", "The scored forecasts", "The credibility piece: real predictions, logged with a probability and scored once the outcome is known — including whether they beat the market's own price. The full ledger lives on the scorecard page.", track_body + '<p class="fine"><a href="scorecard.html">&#9656; Open the full scorecard — every forecast, hits and misses</a></p>', mascot="scorecard")}
 
 {media_section}
+
+{_section("coverage", "Coverage", "Why is a name unrated?", "The nightly run's own scorecard: how much of the tier actually rated, which evidence existed, and the stated reason for everything missing. A missed gate is said out loud — the site ships honest INSUFFICIENT states, never fabricated labels.", _coverage_panel_html())}
 
 {_section("health", "Freshness", "Is the data current?", "Every recurring connector, dated by its own artifacts and judged against a stated budget — ok, degraded, stale, or honestly never fetched. When a source ages, the surfaces built on it say so instead of pretending.", _health_table(getattr(state, "health", []) or []))}
 
