@@ -14,8 +14,8 @@ from __future__ import annotations
 import argparse
 import traceback
 
-JOBS = ("resolve", "research", "media", "trending", "divergence", "macro", "sim", "forward",
-        "verdicts", "watchers", "dashboard", "alert")
+JOBS = ("resolve", "research", "media", "trending", "divergence", "macro", "context",
+        "sim", "forward", "verdicts", "watchers", "dashboard", "alert")
 
 
 def _job_resolve():
@@ -94,6 +94,15 @@ def _job_verdicts():
     return "verdict artifacts rebuilt -> data/verdicts/"
 
 
+def _job_context():
+    # 13F + congress context digests — best effort; the ticker pages read them
+    # at dashboard time, so this runs before it
+    from ..cli.context import main as context_main
+
+    context_main([])
+    return "context digests filed (13F + congress, skips stated)"
+
+
 def _job_watchers():
     # after verdicts (so verdict-change sees today's artifact) and before the
     # dashboard/alert, which both render the feed it files
@@ -143,6 +152,7 @@ def main(argv=None) -> int:
         "macro": _job_macro,
         "sim": lambda: _job_sim(args.sim_bars),
         "forward": _job_forward,
+        "context": _job_context,
         "verdicts": _job_verdicts,
         "watchers": _job_watchers,
         "dashboard": _job_dashboard,
