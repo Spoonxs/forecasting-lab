@@ -37,7 +37,7 @@ def main(argv=None) -> int:
         print(f"  {label:<16} {v['value']} ({v['date']})")
 
     if args.digest:
-        from ..pipeline.digest import render_digest, write_dated_note
+        from ..pipeline.digest import render_digest, write_dated_data, write_dated_note
 
         lines = [f"- **12-month recession probability**: {prob:.1%} (from 10Y-3M spread {ts['value']} pts)"]
         for label, v in snap["levels"].items():
@@ -47,8 +47,18 @@ def main(argv=None) -> int:
             {"Yield-curve recession model": "\n".join(lines)},
             disclaimer="Estrella-Mishkin probit on the term spread; a model, not a forecast of certainty. Not financial advice.",
         )
-        path = write_dated_note("macro-nowcast", body, out_dir=None if args.out is None else Path(args.out))
-        print(f"\nWrote digest to {path}")
+        out_dir = None if args.out is None else Path(args.out)
+        path = write_dated_note("macro-nowcast", body, out_dir=out_dir)
+        # the JSON sidecar (P8-1): what the verdict provider and the macro-flip
+        # watcher actually read — without it the macro component NEVER fires
+        # (the audit's root cause #1). Dated by the spread observation itself.
+        sidecar = write_dated_data("macro-nowcast", {
+            "as_of": ts.get("date"),
+            "recession_prob_12m": prob,
+            "term_spread": ts,
+            "levels": snap["levels"],
+        }, out_dir=out_dir)
+        print(f"\nWrote digest to {path} (+ sidecar {sidecar.name})")
     return 0
 
 
