@@ -50,6 +50,7 @@ flab-cron = "forecasting_lab.cli.cron:main"
 flab-verdicts = "forecasting_lab.cli.verdicts:main"
 flab-watchers = "forecasting_lab.cli.watchers:main"
 flab-ask = "forecasting_lab.cli.ask:main"
+flab-context = "forecasting_lab.cli.context:main"
 
 [project.urls]
 Homepage = "https://github.com/"

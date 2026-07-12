@@ -58,11 +58,24 @@ def source_groups(refresh: bool = False) -> list[SourceGroup]:
                     "FINRA daily short-sale volume files; daily pressure gauge for squeeze"),
         SourceGroup("Insider cluster buys", "filings", "live", 1,
                     "Form-4 distinct-insider buy clusters (openinsider screener); FTD zips deliberately later"),
+        SourceGroup("13F holders", "filings", "live", _thirteenf_count(),
+                    "curated manager books via EDGAR 13F-HR; STALE BY DESIGN — context, never signal"),
+        SourceGroup("Congress trades", "filings", "live", 2,
+                    "House/Senate disclosure mirrors, best-effort; the lag stated on every row"),
         SourceGroup("X / Twitter voices", "social", "blocked here", _x_voice_count(),
                     "curated finance handles; Nitter pull best-effort, list is the asset"),
         SourceGroup("Reddit subs", "sentiment", "blocked here", len(_REDDIT_SUBS),
                     "supported when reachable; 403 on this network"),
     ]
+
+
+def _thirteenf_count() -> int:
+    try:
+        from .thirteenf import MANAGERS
+
+        return len(MANAGERS)
+    except Exception:  # pragma: no cover
+        return 0
 
 
 def _soccer_leagues() -> dict:

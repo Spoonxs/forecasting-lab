@@ -276,6 +276,22 @@ def build_verdict_pages(out_dir, *, verdicts_dir=None, tier_live_worker: str = "
 
     movers = {c.get("ticker", "").upper(): c
               for c in (read_latest_data("trending-stocks") or {}).get("movers", [])}
+    # the P7 context digests (13F + congress) — {} offline, honest empty modules
+    ctx13 = read_latest_data("thirteenf") or {}
+    ctxcg = read_latest_data("congress") or {}
+
+    def _ctx_for(s: str) -> tuple[list, list]:
+        su = s.upper()
+        holders = [{"manager": b["manager"], "issuer": h["issuer"],
+                    "value_kusd": h.get("value_kusd"),
+                    "staleness": b.get("staleness", {}).get("label", "staleness unknown")}
+                   for b in ctx13.get("managers", [])
+                   for h in b.get("holdings", [])
+                   if str(h.get("ticker") or "").upper() == su]
+        trades = [t for t in ctxcg.get("trades", [])
+                  if str(t.get("ticker", "")).upper() == su]
+        return holders, trades
+
     registry = InstrumentRegistry()
     out_dir = Path(out_dir) / "t"
     out_dir.mkdir(parents=True, exist_ok=True)
@@ -302,6 +318,7 @@ def build_verdict_pages(out_dir, *, verdicts_dir=None, tier_live_worker: str = "
             markers=card.get("markers") if card else None,  # split/dividend events flow when the feed carries them
             news=news, peers=peers, as_of=payload["as_of"], audit_sha=sha,
             tier_live_worker=tier_live_worker,
+            holders=_ctx_for(sym)[0], trades=_ctx_for(sym)[1],
         )
         (out_dir / f"{safe}.html").write_text(html, encoding="utf-8")
         built.append(sym)
@@ -328,6 +345,39 @@ def build_verdict_pages(out_dir, *, verdicts_dir=None, tier_live_worker: str = "
         )
         (out_dir / f"{fund_sym}.html").write_text(html, encoding="utf-8")
     return built
+
+
+def _context_module(symbol: str, holders: list[dict], trades: list[dict]) -> str:
+    """External positioning — 13F holders + congressional disclosures for this
+    name (P7 §D). Every row carries its staleness; the standing banner says
+    what this is: old by design, context, never a verdict input."""
+    banner = ('<p class="na">Context, not signal — this data is old by design '
+              '(quarterly filings; disclosures up to 45d late) and never enters a verdict.</p>')
+    if not holders and not trades:
+        return ('<div class="ext"><div class="ext-tag">Context — external positioning</div>'
+                f'<h3>13F holders &amp; congressional trades</h3>{banner}'
+                '<p class="na">None on record in the latest sweeps — or the feeds are '
+                'skipped here (see the health panel). Honest empty, never guessed.</p></div>')
+    hrows = "".join(
+        f'<li><b>{_esc(h["manager"])}</b> — {_esc(h["issuer"])}'
+        f'{" (" + _esc(str(h.get("value_kusd"))) + "k USD reported)" if h.get("value_kusd") else ""}'
+        f'<span class="ctx-stale">{_esc(h["staleness"])}</span></li>'
+        for h in holders[:6])
+    trows = "".join(
+        f'<li><b>{_esc(t["member"])}</b> ({_esc(t["chamber"])}) — {_esc(t.get("type", ""))} '
+        f'{_esc(t.get("amount_range", ""))}'
+        f'<span class="ctx-stale">traded {_esc(t.get("transaction_date") or "n/a")}, '
+        f'disclosed {_esc(t.get("disclosed_date") or "n/a")}'
+        f'{" — " + _esc(str(t["lag_days"])) + "d lag" if t.get("lag_days") is not None else " — lag n/a"}'
+        f'</span></li>'
+        for t in trades[:6])
+    body = ""
+    if hrows:
+        body += f'<h4>13F holders</h4><ul class="ctx">{hrows}</ul>'
+    if trows:
+        body += f'<h4>Congressional disclosures</h4><ul class="ctx">{trows}</ul>'
+    return (f'<div class="ext"><div class="ext-tag">Context — external positioning</div>'
+            f'<h3>13F holders &amp; congressional trades</h3>{banner}{body}</div>')
 
 
 def _fund_banner(fund: dict | None) -> str:
@@ -376,6 +426,8 @@ def render_verdict_page(
     audit_sha: str = "",
     tier_live_worker: str = "",
     fund: dict | None = None,
+    holders: list | None = None,
+    trades: list | None = None,
 ) -> str:
     label = row.get("label", INSUFFICIENT)
     tone = LABEL_TONE.get(label, FAINT)
@@ -429,6 +481,12 @@ h3{{font:700 12px/1.3 var(--mono);letter-spacing:.06em;text-transform:uppercase;
   border-top:1px solid var(--rule);padding-top:12px}}
 .forprofile b{{color:var(--ink)}}
 .reasons{{color:var(--faint);font-size:12px;margin-top:8px;text-align:center}}
+.ctx{{list-style:none;padding:0;margin:6px 0}}
+.ctx li{{padding:7px 0;border-bottom:1px solid var(--rule);font-size:12.5px}}
+.ctx li:last-child{{border-bottom:0}}
+.ctx-stale{{display:block;color:var(--faint);font-size:11px;margin-top:2px}}
+.ext h4{{font:700 10.5px/1 var(--mono);text-transform:uppercase;letter-spacing:.05em;
+  color:var(--mut);margin:12px 0 4px}}
 .rtabs{{display:inline-flex;gap:2px;border:1px solid var(--rule);border-radius:4px;padding:3px;
   margin-bottom:12px;background:var(--card)}}
 .rtabs a{{font:600 11px/1 var(--mono);letter-spacing:.04em;text-transform:uppercase;
@@ -489,7 +547,7 @@ footer{{margin-top:22px;padding-top:14px;border-top:1px solid var(--rule);font-s
 </style></head><body><div class="wrap">
 <div class="top"><a href="../index.html">&#9666; Platform</a>{MASCOTS.get("movers", "")}</div>
 {fund_note}
-<div class="rtabs"><a href="#chart">Chart</a><a href="#verdict">Verdict</a><a href="#evidence">Evidence</a><a href="#analyst">Analyst</a><a href="#news">News</a><a href="#peers">Peers</a></div>
+<div class="rtabs"><a href="#chart">Chart</a><a href="#verdict">Verdict</a><a href="#evidence">Evidence</a><a href="#analyst">Analyst</a><a href="#context">Context</a><a href="#news">News</a><a href="#peers">Peers</a></div>
 <div class="card" id="chart">{_price_header(symbol, name or symbol, price, day_change, moves)}{_chart(spark, markers)}</div>
 
 <div class="card" id="verdict">
@@ -513,6 +571,8 @@ footer{{margin-top:22px;padding-top:14px;border-top:1px solid var(--rule);font-s
 </div>
 
 <div class="card" id="analyst">{_analyst_module(analyst)}</div>
+
+<div class="card" id="context">{_context_module(symbol, holders or [], trades or [])}</div>
 
 <div class="card" id="news"><h3>Recent headlines</h3>{_news(news)}</div>
 

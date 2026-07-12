@@ -26,6 +26,10 @@ FEEDS = [
     ("Media watch", "media-watch", 7, 21),
     ("Research sweep", "research-digest", 7, 30),
     ("Watcher feed", "watchers", 2, 7),
+    # P7 context connectors: 13F is quarterly by nature; congress mirrors are
+    # best-effort — both are context, and their age budgets say so
+    ("13F holders", "thirteenf", 35, 120),
+    ("Congress trades", "congress", 7, 30),
 ]
 #: (display name, tidy-store metric, ok days, degraded days)
 STORE_METRICS = [
