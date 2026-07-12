@@ -1376,6 +1376,8 @@ tr.hl td {{ background:#faf4ee; }}
 footer {{ margin-top:32px; padding-top:18px; border-top:1px solid var(--rule); font:400 12.5px/1.6 var(--sans); color:var(--faint); text-align:center; }}
 
 .reveal {{ animation:up .5s cubic-bezier(.2,.6,.2,1) both; }}
+html.motion-off .reveal {{ animation:none; }}
+html.motion-off * {{ transition:none !important; animation:none !important; }}
 @keyframes up {{ from {{ opacity:0; transform:translateY(8px); }} to {{ opacity:1; transform:none; }} }}
 .draw {{ stroke-dasharray:1; stroke-dashoffset:1; animation:draw .9s ease-out .15s forwards; }}
 @keyframes draw {{ to {{ stroke-dashoffset:0; }} }}
@@ -1404,7 +1406,7 @@ a,button,.kpi {{ transition:color .15s ease, border-color .15s ease, background 
 
 <div class="dateline enginebar">
   <span>{_esc(dateline)}</span>
-  <span>{sources_total:,} sources tracked</span>
+  <span data-count>{sources_total:,} sources tracked</span>
   <span><a href="agent.html" style="color:var(--accent);font-weight:700">&#9656; Live Agent Terminal</a></span>
   <span class="live" id="clock" data-gen="{_esc(state.generated)}">updated {_esc(state.generated)}</span>
 </div>
@@ -1602,5 +1604,6 @@ a,button,.kpi {{ transition:color .15s ease, border-color .15s ease, background 
     [pH,pG,pR].forEach(function(s){{s.addEventListener('change',function(){{saveProf();applyProf();}});}}); applyProf(); }}
 }})();
 </script>
+<script src="motion.js"></script>
 </body>
 </html>"""

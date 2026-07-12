@@ -147,8 +147,12 @@ def test_home_is_the_platform_search_verdicts_profile():
     assert "Core ETFs" in html and 'id="built"' in html             # ETF row + built-symbol index
     assert "esc(" in html and "fetch('universe.json')" in html      # XSS-safe search + lazy full-universe
     assert "The engine room" in html                                # old sections demoted below
-    # no external fetches anywhere on the platform home
-    assert "fonts.googleapis" not in html and "<script src=" not in html
+    # no external fetches anywhere on the platform home — the ONLY script src
+    # is the local motion layer (P9-3), never http(s)
+    import re as _re
+
+    assert _re.findall(r'<script[^>]*src="([^"]+)"', html) == ["motion.js"]
+    assert "fonts.googleapis" not in html and 'src="http' not in html
     assert '<link rel="stylesheet"' not in html
 
 
@@ -227,8 +231,11 @@ def test_reskin_is_stock_taper_x_rallies():
     assert 'class="qchips"' in html and "Is anything squeezing?" in html
     assert 'data-feed-kind="pick"' in html and 'data-feed-kind="resolve"' in html
     assert "scorecard.html" in html  # the Scorecard surface is in the nav
-    # self-contained: nothing external is fetched
-    assert "fonts.googleapis" not in html and "<script src=" not in html
+    # self-contained: only the local motion layer loads by src (P9-3)
+    import re as _re
+
+    assert _re.findall(r'<script[^>]*src="([^"]+)"', html) == ["motion.js"]
+    assert "fonts.googleapis" not in html and 'src="http' not in html
     assert '<link rel="stylesheet"' not in html
 
 

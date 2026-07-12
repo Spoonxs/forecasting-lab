@@ -61,7 +61,11 @@ def test_receipts_drawer_content_is_present_without_js():
     assert "evidence disagrees" in html                        # trend up vs macro down, kept on screen
     assert "External opinion" in html and "Analyst consensus" in html
     assert "prefers-reduced-motion" in html
-    assert "fonts.googleapis" not in html and "<script src=" not in html
+    # P9-3: the ONLY script src is the local motion layer — never http(s)
+    import re
+
+    assert re.findall(r'<script[^>]*src="([^"]+)"', html) == ["../motion.js"]
+    assert "fonts.googleapis" not in html and 'src="http' not in html
 
 
 def test_degraded_page_is_honest_and_never_fabricates():

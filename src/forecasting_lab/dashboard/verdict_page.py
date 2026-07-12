@@ -89,7 +89,7 @@ def _gauge(name: str, value: float, *, invert: bool = False) -> str:
         f'aria-label="{_esc(DIAL_LABEL.get(name, name))} {v:.0%}">'
         f'<path d="{arc}" fill="none" stroke="{RULE}" stroke-width="9" stroke-linecap="round"/>'
         f'<path d="{arc}" fill="none" stroke="{tone}" stroke-width="9" stroke-linecap="round" '
-        f'pathLength="100" stroke-dasharray="{v * 100:.1f} 100"/>'
+        f'pathLength="100" stroke-dasharray="{v * 100:.1f} 100" data-sweep/>'
         f'<text x="50" y="48" text-anchor="middle" class="g-val">{v:.0%}</text></svg>'
         f'<div class="g-lab">{_esc(DIAL_LABEL.get(name, name))}</div></div>'
     )
@@ -492,7 +492,9 @@ h3{{font:700 12px/1.3 var(--mono);letter-spacing:.06em;text-transform:uppercase;
 .rtabs a{{font:600 11px/1 var(--mono);letter-spacing:.04em;text-transform:uppercase;
   color:var(--mut);padding:7px 11px;border-radius:3px}}
 .rtabs a:hover{{background:var(--paper);color:var(--ink)}}
+.rtabs a.on{{background:var(--ink);color:var(--paper)}}
 html{{scroll-behavior:smooth}}
+html.motion-off *{{transition:none!important;animation:none!important}}
 .fundnote{{font-size:12.5px;color:var(--mut);border-left:3px solid var(--accent)}}
 .fundtag{{font:700 10px/1 var(--mono);text-transform:uppercase;letter-spacing:.06em;
   background:var(--accent);color:#fff;border-radius:3px;padding:3px 7px;margin-right:6px}}
@@ -587,6 +589,7 @@ footer{{margin-top:22px;padding-top:14px;border-top:1px solid var(--rule);font-s
 · <a href="../scorecard.html">scorecard</a> · <a href="../index.html">platform</a></footer>
 </div>
 <script id="matrix" type="application/json">{_json_html(matrix)}</script>
+<script src="../motion.js"></script>
 <script>
 (function(){{
   var matrix=JSON.parse(document.getElementById('matrix').textContent||'{{}}');
@@ -622,6 +625,13 @@ footer{{margin-top:22px;padding-top:14px;border-top:1px solid var(--rule);font-s
   }}
   document.getElementById('jFollow').addEventListener('click',function(){{jlog('followed');}});
   document.getElementById('jIgnore').addEventListener('click',function(){{jlog('ignored');}});
+  // the research tabs get an active state (P9-3) — pure UI, no data
+  Array.prototype.forEach.call(document.querySelectorAll('.rtabs a'),function(a){{
+    a.addEventListener('click',function(){{
+      Array.prototype.forEach.call(document.querySelectorAll('.rtabs a'),
+        function(b){{b.classList.toggle('on',b===a);}});
+    }});
+  }});
 }})();
 {tier_live_js(tier_live_worker)}
 </script>
