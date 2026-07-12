@@ -16,6 +16,7 @@ from ..config import PATHS
 from ..dashboard import (
     build_arena_page,
     build_compare_page,
+    build_desk_page,
     build_journal_page,
     build_portfolio_page,
     build_verdict_pages,
@@ -69,6 +70,10 @@ def main(argv=None) -> int:
     # the decision journal (browser-local entries join the public regret rows)
     journal = build_journal_page(out.parent)
     print(f"Journal page written -> {journal.name}")
+
+    # the in-site desk chat (deterministic, same-origin bundle; P10)
+    desk = build_desk_page(out.parent)
+    print(f"Desk page written -> {desk.name} (+ desk-data.json)")
 
     # the motion layer + vendored libs (P9) — copied local, zero external fetches
     from ..dashboard.assets_pipe import copy_assets

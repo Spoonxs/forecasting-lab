@@ -37,18 +37,51 @@ class Answer:
 
 
 # ------------------------------------------------------------- intent match
-_FEES_RE = re.compile(r"\b(fee|fees|cheap|expense|expensive|twin)\b", re.I)
-_CHANGES_RE = re.compile(r"\b(what changed|changes?|moved|since (yesterday|last))\b", re.I)
-_ARENA_RE = re.compile(r"\b(arena|books?|race|racing|winning)\b", re.I)
-_REGRET_RE = re.compile(r"\b(regret|track record|actually done|profitable|worth it|beat)\b", re.I)
-_WATCHERS_RE = re.compile(r"\b(watchers?|watching|alerts?|fired|triggers?)\b", re.I)
-_VERDICT_RE = re.compile(r"\b(verdict|rating|rated|buy|sell|hold|think of|about)\b", re.I)
+# ONE pattern table (P10-1): Python compiles these AND desk_contract() ships
+# the exact same strings to the in-site chat, so the two sides cannot drift.
+INTENT_PATTERNS = {
+    "fees": r"\b(fee|fees|cheap|expense|expensive|twin)\b",
+    "changes": r"\b(what changed|changes?|moved|since (yesterday|last))\b",
+    "arena": r"\b(arena|books?|race|racing|winning)\b",
+    "regret": r"\b(regret|track record|actually done|profitable|worth it|beat)\b",
+    "watchers": r"\b(watchers?|watching|alerts?|fired|triggers?)\b",
+    "verdict": r"\b(verdict|rating|rated|buy|sell|hold|think of|about)\b",
+}
+INTENT_ORDER = ("fees", "changes", "arena", "regret", "watchers", "verdict")
+SYMBOL_TOKEN = r"[A-Za-z][A-Za-z.\-]{0,9}"
+BARE_SYMBOL_MAX_TOKENS = 2
+CHIPS = ("what's the verdict on NVDA", "what changed today",
+         "how's the arena going", "how have the recommendations actually done",
+         "is VTSAX cheap to hold", "what are the watchers seeing")
+
+_RES = {k: re.compile(v, re.I) for k, v in INTENT_PATTERNS.items()}
+_FEES_RE, _CHANGES_RE = _RES["fees"], _RES["changes"]
+_ARENA_RE, _REGRET_RE = _RES["arena"], _RES["regret"]
+_WATCHERS_RE, _VERDICT_RE = _RES["watchers"], _RES["verdict"]
+
+
+def desk_contract() -> dict:
+    """The machine-readable chat contract the in-site mirror consumes — the
+    SAME strings this module compiles, so intents can't drift (P10-1)."""
+    return {
+        "version": 1,
+        "order": list(INTENT_ORDER),
+        "patterns": dict(INTENT_PATTERNS),
+        "symbol_token": SYMBOL_TOKEN,
+        "bare_symbol_max_tokens": BARE_SYMBOL_MAX_TOKENS,
+        "rules": {"fees_requires_symbol": True,
+                  "bare_symbol_is_verdict": True,
+                  "unknown_gets_capability_list": True},
+        "chips": list(CHIPS),
+        "help": _HELP,
+        "disclaimer": "not financial advice — a research tool",
+    }
 
 
 def _find_symbol(question: str, known: set[str]) -> str | None:
     """The first token that IS a known symbol (case-insensitive; longest wins
     on ties so 'VTSAX' beats a stray 'V')."""
-    tokens = re.findall(r"[A-Za-z][A-Za-z.\-]{0,9}", question)
+    tokens = re.findall(SYMBOL_TOKEN, question)
     hits = [t.upper() for t in tokens if t.upper() in known]
     return max(hits, key=len) if hits else None
 
@@ -71,7 +104,7 @@ def classify(question: str, known_symbols: set[str]) -> tuple[str, str | None]:
     # a BARE symbol ("NVDA", "NVDA?") is a verdict ask; a symbol buried in an
     # unrelated question ("who is the CEO of NVDA") is NOT — that's a question
     # we can't answer, and the capability list is the honest reply (Codex review)
-    if sym and len(re.findall(r"[A-Za-z][A-Za-z.\-]*", question)) <= 2:
+    if sym and len(re.findall(SYMBOL_TOKEN, question)) <= BARE_SYMBOL_MAX_TOKENS:
         return "verdict", sym
     return "help", None
 
@@ -86,9 +119,11 @@ def ask(question: str, *, verdicts_dir=None, arena_path=None, regret_path=None,
     loaded = load_latest_verdicts(verdicts_dir)
     payload = {} if loaded.get("empty") else loaded["payload"]
     known = set(payload.get("verdicts", {}))
-    from ..sources.instruments import MUTUAL_FUND_TWINS
+    from ..sources.instruments import CORE_ETFS, MUTUAL_FUND_TWINS
 
-    known |= set(MUTUAL_FUND_TWINS)
+    # fee questions must reach every symbol we HAVE fee data for (Codex
+    # review: a core ETF absent from the artifact still has a published fee)
+    known |= set(MUTUAL_FUND_TWINS) | set(CORE_ETFS)
     intent, sym = classify(question, known)
     receipts = (f"as of {payload.get('as_of')} · audit {loaded.get('audit_sha', '')[:12]}"
                 if payload else "no record — no verdict artifact yet")
