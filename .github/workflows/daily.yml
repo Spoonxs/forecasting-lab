@@ -30,6 +30,16 @@ jobs:
           python-version: "3.12"
           cache: pip
 
+      # the P8 price panel: a rolling cache so the nightly does cheap
+      # incremental pulls instead of cold 1y fetches for the whole tier
+      - name: Cache the price panel
+        uses: actions/cache@v4
+        with:
+          path: data/prices
+          key: price-panel-${{ github.run_id }}
+          restore-keys: |
+            price-panel-
+
       - name: Install
         run: pip install -e ".[all]"
 

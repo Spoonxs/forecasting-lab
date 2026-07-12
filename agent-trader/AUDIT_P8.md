@@ -68,7 +68,13 @@ without an operational-rigor layer. Adopted:
 
 ## 3. The program
 
-### P8 — MAKE IT ACTUALLY RATE (first; nothing else matters until this)
+### P8 — MAKE IT ACTUALLY RATE — **BUILT (2026-07-12)**
+Live proof on a 60-symbol run: **60/60 rated** (2 STRONG BUY, 18 BUY, 27
+HOLD, 10 TRIM, 3 AVOID), gate ok, median 4 components, 0 panel failures,
+**27 regret entries opened** anchored to real closes. The full-tier CI run
+inherits this via the daily workflow (+ a rolling price-panel cache).
+
+#### the plan as executed
 1. **P8-1** macro JSON sidecar from `cli/macro.py --digest` — macro fires for
    every symbol (14% of weight, universally).
 2. **P8-2** the price panel: cached/chunked/backoff close-panel fetcher over
