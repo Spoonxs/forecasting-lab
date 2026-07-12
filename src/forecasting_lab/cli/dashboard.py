@@ -70,6 +70,12 @@ def main(argv=None) -> int:
     journal = build_journal_page(out.parent)
     print(f"Journal page written -> {journal.name}")
 
+    # the motion layer + vendored libs (P9) — copied local, zero external fetches
+    from ..dashboard.assets_pipe import copy_assets
+
+    assets = copy_assets(out.parent)
+    print(f"Assets copied: {len(assets)} (vendor + motion.js)")
+
     # the landing page (Sakura treatment; the marketing entry into the app)
     from ..dashboard.landing import build_landing
 

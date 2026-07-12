@@ -1,0 +1,12 @@
+GSAP 3.12.5 (gsap.min.js, ScrollTrigger.min.js)
+Copyright GreenSock, Inc. / Webflow, Inc. All rights reserved.
+
+Distributed under the GSAP Standard License - the full text lives at
+https://gsap.com/standard-license (GSAP does not ship a LICENSE file in its
+repository or npm package; each minified file carries the license header
+pointing there). Following Webflow's acquisition of GreenSock, GSAP -
+including its plugins - is free for both personal and commercial use.
+
+These vendored copies are UNMODIFIED from the official npm distribution
+(package gsap, version 3.12.5, dist/ files), self-hosted here solely so the
+site makes no external fetches. No endorsement implied.

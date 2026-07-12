@@ -59,7 +59,7 @@ Homepage = "https://github.com/"
 where = ["src"]
 
 [tool.setuptools.package-data]
-forecasting_lab = ["sources/data/*.gz"]
+forecasting_lab = ["sources/data/*.gz", "dashboard/assets/*.js", "dashboard/assets/vendor/*"]
 
 [tool.pytest.ini_options]
 pythonpath = ["src"]
