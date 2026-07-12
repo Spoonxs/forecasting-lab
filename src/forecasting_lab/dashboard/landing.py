@@ -194,14 +194,25 @@ body {{ background:var(--paper); color:var(--ink); font:400 16px/1.6 var(--mono)
     radial-gradient(60vw 40vh at 75% 12%, rgba(47,125,49,.06), transparent 70%),
     radial-gradient(50vw 36vh at 15% 80%, rgba(198,57,44,.05), transparent 70%),
     linear-gradient(180deg, var(--paper), var(--paper)); }}
-#poster svg {{ position:absolute; inset:0; width:100%; height:100%; opacity:.5; }}
+#poster svg {{ position:absolute; inset:0; width:100%; height:100%; opacity:.5;
+  mix-blend-mode:multiply; }}
 #grain {{ position:fixed; inset:0; z-index:1; pointer-events:none; opacity:.05;
   background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.8' numOctaves='2'/%3E%3C/filter%3E%3Crect width='120' height='120' filter='url(%23n)'/%3E%3C/svg%3E");
   animation:grain 1.2s steps(3) infinite; }}
 @keyframes grain {{ 0%,100%{{transform:translate(0,0)}} 33%{{transform:translate(-4px,3px)}} 66%{{transform:translate(3px,-4px)}} }}
+.gnav {{ position:fixed; top:0; left:0; right:0; z-index:5; display:flex;
+  justify-content:space-between; align-items:center; padding:14px 22px;
+  background:rgba(251,247,235,.55); backdrop-filter:blur(10px);
+  -webkit-backdrop-filter:blur(10px); border-bottom:1px solid var(--rule); }}
+.gnav b {{ font:800 12px/1 var(--mono); letter-spacing:.28em; text-transform:uppercase; }}
+.gnav nav a {{ font:700 11px/1 var(--mono); letter-spacing:.06em; text-transform:uppercase;
+  color:var(--ink); text-decoration:none; margin-left:18px;
+  border-bottom:2px solid transparent; transition:border-color .3s var(--ease); }}
+.gnav nav a:hover {{ border-bottom-color:var(--accent); }}
 .rail {{ position:fixed; right:14px; top:50%; transform:translateY(-50%); z-index:2;
   writing-mode:vertical-rl; font:700 10px/1 var(--mono); letter-spacing:.5em;
   text-transform:uppercase; color:var(--faint); }}
+.rail.left {{ right:auto; left:14px; }}
 .wrap {{ position:relative; z-index:2; max-width:780px; margin:0 auto; padding:0 22px 90px; }}
 .hero {{ min-height:92vh; display:flex; flex-direction:column; justify-content:center; padding:60px 0 30px; }}
 .eyebrow {{ font:700 12px/1 var(--mono); letter-spacing:.5em; text-transform:uppercase; color:var(--accent); }}
@@ -263,7 +274,11 @@ html.motion-off #grain, html.motion-off .scrollcue {{ animation:none; }}
     <path d="M0 90 Q 22 86 40 89 T 74 87 T 100 90" stroke="{FAINT}" stroke-opacity=".4"/>
   </g></svg></div>
 <canvas id="bg" aria-hidden="true"></canvas><div id="grain" aria-hidden="true"></div>
+<header class="gnav"><b>The Verdict Desk</b>
+  <nav><a href="scorecard.html">Scorecard</a><a href="arena.html">Arena</a>
+  <a href="index.html">Enter the desk &#8594;</a></nav></header>
 <div class="rail" aria-hidden="true">EST. 2026 · PAPER FIRST · NOT FINANCIAL ADVICE</div>
+<div class="rail left" aria-hidden="true">RECEIPTS ON EVERY VERDICT · SCORED IN PUBLIC</div>
 <div class="wrap">
   <div class="hero">
     <div class="eyebrow">The Verdict Desk · paper first</div>
@@ -375,7 +390,7 @@ function motes() {{  // the P6b fallback layer, unchanged in spirit
   const x = bg.getContext('2d'); let W, H; const P = [];
   const size = () => {{ W = bg.width = innerWidth; H = bg.height = innerHeight; }};
   size(); addEventListener('resize', size);
-  const N = Math.min(56, Math.round(W * H / 26000));
+  const N = Math.min(64, Math.round(W * H / 24000));
   for (let i = 0; i < N; i++) P.push({{ x: Math.random() * W, y: Math.random() * H,
     s: 1 + Math.random() * 3, vy: .15 + Math.random() * .4, sw: Math.random() * 6.28,
     c: Math.random() < .35, up: Math.random() < .5 }});

@@ -92,7 +92,15 @@ inherits this via the daily workflow (+ a rolling price-panel cache).
 5. **P8-5** golden-fixture/null/deterministic-snapshot tests; docs; push; CI
    green.
 
-### P9 — THE GLOW-UP (only after artifacts are credible)
+### P9 — THE GLOW-UP — **BUILT (2026-07-12)**
+Vendored GSAP 3.12.5 + three r160 (licenses committed, served locally); the
+landing rebuilt to the storyboard (WebGL card-field hero + wireframe price
+surface, ScrollTrigger scenes over REAL artifact numbers, glassy
+backdrop-blur nav, twin vertical rails, grain, poster + 2D fallbacks, one
+kill-switch); app pages carry the restrained layer. Budgets recorded:
+landing HTML 19.6KB (<60KB), JS bundle ~215KB gz (<250KB). Codex fidelity
+verdict: techniques 1/2/4/6 at comparable depth; the flagged gaps (glassy
+nav, blend-multiply, second rail, mote count) fixed in P9-4.
 1. **P9-1** vendor gsap + ScrollTrigger + three (licenses committed); shared
    `motion.js` with a reduced-motion kill-switch; restrained app-page
    micro-interactions (Stock Taper restraint — drama is landing-only).
