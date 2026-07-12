@@ -32,6 +32,8 @@ def main(argv=None) -> int:
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--limit", type=int, default=None, help="cap the symbol count (debug)")
     ap.add_argument("--no-codex", action="store_true", help="skip the codex opinion call")
+    ap.add_argument("--no-prices", action="store_true",
+                    help="skip the price-panel network update (cached panel still used)")
     args = ap.parse_args(argv)
 
     from ..pipeline.verdicts import (
@@ -47,8 +49,55 @@ def main(argv=None) -> int:
     symbols = tier_full_symbols()
     if args.limit:
         symbols = symbols[: args.limit]
-    payload = build_verdicts(symbols, hysa_yield_pct=hysa_yield_pct())
+
+    # P8: bring the price panel up to date (weekly full refresh for corporate
+    # actions), then build the REAL provider — the audit's fix for 0/540 rated.
+    # A failed panel update is a stated skip; the provider degrades honestly.
+    from datetime import date as _date
+
+    as_of = _date.today()
+    panel_receipt = None
+    if not args.no_prices:
+        try:
+            from ..pipeline.prices import (
+                mark_full_refresh,
+                update_panel,
+                weekly_full_refresh_due,
+            )
+
+            full = weekly_full_refresh_due(now=as_of)
+            panel_receipt = update_panel(symbols, now=as_of, full=full)
+            if full and not panel_receipt["not_attempted"]:
+                mark_full_refresh(now=as_of)
+            print(f"price panel: {panel_receipt['updated']} updated, "
+                  f"{panel_receipt['refetched']} refetched, "
+                  f"{panel_receipt['skipped_fresh']} fresh, "
+                  f"{len(panel_receipt['failed'])} failed"
+                  + (", circuit opened" if panel_receipt["not_attempted"] else ""))
+        except Exception as exc:  # noqa: BLE001 - the run continues, honestly thinner
+            print(f"price panel: skipped ({type(exc).__name__}: {exc}) — "
+                  "components degrade to what's cached")
+    from ..pipeline.providers import build_real_provider
+
+    provider, manifest = build_real_provider(symbols, as_of=as_of)
+    if panel_receipt is not None:
+        manifest["panel_run"] = panel_receipt
+    payload = build_verdicts(symbols, provider, hysa_yield_pct=hysa_yield_pct())
     path, sha = write_verdicts(payload)
+
+    # the run manifest (Codex planning consult): what evidence existed and why
+    # the rest is missing — the coverage dashboard reads this
+    import json as _json
+
+    from ..config import PATHS
+
+    mdir = PATHS.root / "data" / "verdicts"
+    (mdir / f"manifest-{payload['as_of']}.json").write_text(
+        _json.dumps(manifest, sort_keys=True), encoding="utf-8")
+    (mdir / "manifest.json").write_text(_json.dumps(manifest, sort_keys=True),
+                                        encoding="utf-8")
+    avail = manifest["components_available"]
+    print("manifest: " + ", ".join(f"{k}={v}" for k, v in sorted(avail.items())))
     print(f"verdicts -> {path.name} ({payload['n_symbols']} symbols, audit {sha[:12]})")
     if not verify_contract_roundtrip():  # unconditional — assert dies under -O (Codex review)
         raise RuntimeError("contract.json does not match the engine export — refusing to ship")
