@@ -41,7 +41,7 @@ Create a Telegram bot (@BotFather) and put `TELEGRAM_BOT_TOKEN` +
 on your phone. Without it, alerts append to `inputs/alerts.log` — stated,
 never silent.
 
-## 5. Optional: the TIER LIVE worker (Cloudflare, free tier)
+## 5. ~~Optional~~ DONE (2026-07-13): the TIER LIVE worker
 `cd workers/quote-proxy && wrangler deploy` after setting `ALLOWED_ORIGIN` in
 `wrangler.toml` to your Pages URL. **What turns on:** on-demand price previews
 for any of the ~11k listed symbols (allowlist = the registry, regenerated

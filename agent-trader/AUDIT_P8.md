@@ -112,7 +112,13 @@ nav, blend-multiply, second rail, mote count) fixed in P9-4.
 3. **P9-3** app polish: hero numbers ease in, gauges sweep, row reveals — no
    fake shimmer over data we already have.
 
-### P10 — PARITY DEPTH
+### P10 — PARITY DEPTH — **BUILT + LIVE (2026-07-13)**
+desk.html (deterministic chat, one desk_contract()), XBRL Financials (AAPL
+FY2025 $416.2B filed 2025-10-31 extracted live), the watcher builder
+(contract-bounded, writes nothing), exact-year horizons + the honest plan
+math, and TIER LIVE wired to the operator's DEPLOYED worker
+(flab-quote-proxy.putnamtrack.workers.dev; a latent contract-path bug found
+and fixed on the way). 14 Codex findings fixed and pinned across the phase.
 1. **P10-1** in-site chat: client-side deterministic mirror of flab-ask's six
    intents on `desk.html`, Rallies question chips, receipts identical, no LLM.
 2. **P10-2** fundamentals tab: SEC XBRL companyfacts (free; ~10 req/s fair
