@@ -303,6 +303,21 @@ def evaluate_portfolio(
     }
 
 
+def hysa_projection(monthly: float, years: float,
+                    yield_pct: float | None) -> float | None:
+    """What monthly contributions compound to at the HYSA's CURRENT yield —
+    the honest baseline every risk book must beat (P10-4). Pure arithmetic
+    (monthly compounding at a rate that is NOT guaranteed to persist), never
+    a prediction; None without a real yield datum."""
+    if yield_pct is None or monthly <= 0 or years <= 0:
+        return None
+    r = float(yield_pct) / 100.0 / 12.0
+    n = round(float(years) * 12)
+    if r == 0:
+        return round(monthly * n, 2)
+    return round(monthly * ((1 + r) ** n - 1) / r, 2)
+
+
 def portfolio_contract() -> dict:
     """Thresholds + overlap data the browser mirror consumes (same numbers)."""
     return {
@@ -311,6 +326,11 @@ def portfolio_contract() -> dict:
         "min_cash_pct": next((r.value for r in DEFAULT_RULES if r.type == "min_cash_pct"), 0.0),
         "crowding_overlap_flag": CROWDING_OVERLAP_FLAG,
         "overlap_report_floor": OVERLAP_REPORT_FLOOR,
+        "hysa_projection": "FV = monthly * ((1 + y/1200)^(12*years) - 1) / (y/1200); "
+                           "y == 0 -> FV = monthly * 12 * years (the plain sum); "
+                           "monthly <= 0, years <= 0 or no yield datum -> None (n/a). "
+                           "Monthly compounding at the CURRENT yield — arithmetic, "
+                           "not a prediction",
         "account_types": list(ACCOUNT_TYPES),
         "account_behaviors": {k: dict(v) for k, v in ACCOUNT_BEHAVIORS.items()},
         "dividend_drag_yield_pct": DIVIDEND_DRAG_YIELD_PCT,

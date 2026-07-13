@@ -51,6 +51,34 @@ HORIZON_MULT: dict[str, dict[str, float]] = {
     "5y+": {"trend": 0.6, "residual_momentum": 0.7, "news": 0.4, "squeeze": 0.3,
             "macro": 1.3, "backtest": 1.25, "yield": 1.3},
 }
+#: exact-year anchors (P10-4): each bucket's multipliers apply AT its anchor
+#: year; in between, every component multiplier interpolates LINEARLY. The
+#: buckets stay the labeled surface; the years are the continuous engine.
+HORIZON_ANCHORS_YEARS: dict[str, float] = {"0-1y": 0.5, "1-5y": 3.0, "5y+": 10.0}
+HORIZON_YEARS_MAX = 30.0
+
+
+def horizon_multipliers_for_years(years: float) -> dict[str, float]:
+    """Per-component multipliers for an EXACT horizon: linear interpolation
+    between the bucket anchors, clamped to [0, 30] years (beyond the last
+    anchor the 5y+ profile holds — nothing is extrapolated)."""
+    y = max(0.0, min(HORIZON_YEARS_MAX, float(years)))
+    anchors = sorted(HORIZON_ANCHORS_YEARS.items(), key=lambda kv: kv[1])
+    names = set()
+    for _, m in HORIZON_MULT.items():
+        names |= set(m)
+    if y <= anchors[0][1]:
+        return {n: HORIZON_MULT[anchors[0][0]].get(n, 1.0) for n in names}
+    if y >= anchors[-1][1]:
+        return {n: HORIZON_MULT[anchors[-1][0]].get(n, 1.0) for n in names}
+    for (lo_b, lo_y), (hi_b, hi_y) in zip(anchors, anchors[1:], strict=False):
+        if lo_y <= y <= hi_y:
+            t = (y - lo_y) / (hi_y - lo_y)
+            return {n: (1 - t) * HORIZON_MULT[lo_b].get(n, 1.0)
+                       + t * HORIZON_MULT[hi_b].get(n, 1.0) for n in names}
+    return dict.fromkeys(names, 1.0)  # pragma: no cover - unreachable
+
+
 GOAL_MULT: dict[str, dict[str, float]] = {
     "grow": {},
     "income": {"yield": 1.8, "trend": 0.8, "squeeze": 0.5},
@@ -271,6 +299,11 @@ def scoring_contract() -> dict:
         "insufficient_label": INSUFFICIENT,
         "base_weights": dict(BASE_WEIGHTS),
         "horizon_multipliers": {k: dict(v) for k, v in HORIZON_MULT.items()},
+        "horizon_anchors_years": dict(HORIZON_ANCHORS_YEARS),
+        "horizon_years_max": HORIZON_YEARS_MAX,
+        "horizon_interpolation": "linear between anchor years, clamped — beyond "
+                                 "the last anchor the 5y+ profile holds; a component "
+                                 "missing from a bucket table is implicitly 1.0",
         "goal_multipliers": {k: dict(v) for k, v in GOAL_MULT.items()},
         "thresholds": [[t, name] for t, name in THRESHOLDS],
         "data_confidence_floor": DATA_CONFIDENCE_FLOOR,

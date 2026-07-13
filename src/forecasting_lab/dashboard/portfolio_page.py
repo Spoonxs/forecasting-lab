@@ -148,6 +148,11 @@ body.hidden .val{{filter:blur(6px);user-select:none}}
 .allocbar i{{display:block;height:100%}}
 .alloclegend{{display:flex;gap:12px;flex-wrap:wrap;margin-top:7px;font:600 11px/1 var(--mono);color:var(--mut)}}
 .alloclegend i{{display:inline-block;width:9px;height:9px;border-radius:2px;margin-right:4px;vertical-align:-1px}}
+.plan{{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:14px;margin-bottom:10px}}
+.plan label{{font:600 10.5px/1.6 var(--mono);text-transform:uppercase;letter-spacing:.05em;color:var(--mut)}}
+.plan input{{width:100%;font:500 13px/1 var(--mono);border:1px solid var(--rule);border-radius:5px;padding:8px 10px;background:var(--paper);color:var(--ink)}}
+.plan input[type=range]{{padding:0}}
+.plout{{font:600 13.5px/1.6 var(--mono)}}
 .acct{{display:flex;gap:6px;align-items:center;flex-wrap:wrap;margin-bottom:14px;
   font:600 11px/1 var(--mono);text-transform:uppercase;letter-spacing:.05em;color:var(--mut)}}
 .abtn{{font:700 11px/1 var(--mono);text-transform:uppercase;border:1px solid var(--rule);
@@ -180,6 +185,23 @@ stay in this browser only — never uploaded, never on a server. Not financial a
   </div>
   <p class="demo">Showing a demo book until you add your own. Robinhood / Fidelity / Schwab CSV
   columns are auto-detected, parsed in your browser, never uploaded.</p>
+</div>
+
+<div class="card" id="planCard"><h3>Your plan — the honest baseline</h3>
+  <div class="plan">
+    <label>Horizon <b id="plyv">10</b> years
+      <input type="range" id="plyears" min="1" max="30" step="1" value="10"></label>
+    <label>Monthly contribution $
+      <input type="number" id="plmonthly" min="0" step="50" placeholder="500"></label>
+    <label>Dollar goal (optional) $
+      <input type="number" id="plgoal" min="0" step="1000" placeholder="100000"></label>
+  </div>
+  <p class="plout" id="plout">Enter a monthly contribution to see what the HYSA baseline
+  compounds to — the number any risk book must beat to be worth taking.</p>
+  <p class="demo">Arithmetic at the HYSA&#8217;s CURRENT yield (not guaranteed to persist),
+  never a prediction. Inputs stay in this browser. The exact-year horizon interpolates the
+  engine&#8217;s bucket weights (see the scoring contract); the card labels above use the
+  nearest bucket.</p>
 </div>
 
 <div class="card" id="evalCard">
@@ -354,6 +376,25 @@ _PORTFOLIO_JS = r"""
     t.textContent='✓ logged'; setTimeout(function(){t.textContent=t.dataset.a==='followed'?'✓':'✗';},1200);});
   document.getElementById('clearBtn').addEventListener('click',function(){localStorage.removeItem('flab_holdings');render();});
   document.getElementById('hideBtn').addEventListener('click',function(){document.body.classList.toggle('hidden');});
+  // the plan card (P10-4): pure arithmetic at the CURRENT HYSA yield — the
+  // formula is stated in the contract; no yield datum -> honest n/a
+  function plan(){
+    var yrs=+document.getElementById('plyears').value;
+    document.getElementById('plyv').textContent=yrs;
+    var m=+document.getElementById('plmonthly').value||0;
+    if(m<0)m=0;  // the engine returns None for non-positive input (Codex review)
+    var goal=+document.getElementById('plgoal').value||0;
+    var el=document.getElementById('plout');
+    if(!m){el.textContent='Enter a monthly contribution to see what the HYSA baseline compounds to — the number any risk book must beat to be worth taking.';return;}
+    if(HY==null){el.textContent='HYSA yield unavailable this build — the baseline is honestly n/a (never a made-up rate).';return;}
+    var r=HY/100/12,n=Math.round(yrs*12);
+    var fv=r===0?m*n:m*(Math.pow(1+r,n)-1)/r;
+    var line='At the HYSA’s current '+HY.toFixed(2)+'% yield, $'+m.toLocaleString()+'/month compounds to $'+Math.round(fv).toLocaleString()+' by year '+yrs+' — the book must beat that to be worth the risk.';
+    if(goal>0)line+=fv>=goal?(' That already reaches your $'+goal.toLocaleString()+' goal — extra risk is optional.'):(' Your $'+goal.toLocaleString()+' goal needs more than the HYSA path: the gap is $'+Math.round(goal-fv).toLocaleString()+'.');
+    el.textContent=line;}
+  ['plyears','plmonthly','plgoal'].forEach(function(id){
+    document.getElementById(id).addEventListener('input',plan);});
+  plan();
   // the account-type control (the tax lens) — a local preference, re-evaluated live
   function paintAcct(){var a=acct();
     Array.prototype.forEach.call(document.querySelectorAll('.abtn'),function(b){
