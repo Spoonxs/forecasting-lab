@@ -42,6 +42,57 @@ DEFAULT_CONFIG = {
 }
 
 
+#: the builder contract (P10-3): plain-language descriptions + per-parameter
+#: bounds. The builder UI reads THIS — never re-hardcoded ranges.
+WATCHER_PARAM_SPECS = {
+    "earnings_proximity": {
+        "description": "Fires when a watchlist name reports earnings within N days "
+                       "(waiting on an earnings-date source — stated skip until then).",
+        "params": {"days": {"type": "int", "min": 1, "max": 10, "step": 1}},
+    },
+    "squeeze_trigger": {
+        "description": "Fires when the Reg-SHO daily short-volume ratio — the squeeze "
+                       "fuel gauge — crosses the stated threshold.",
+        "params": {"threshold": {"type": "float", "min": 0.3, "max": 0.9, "step": 0.05}},
+    },
+    "insider_cluster": {
+        "description": "Fires when at least N DISTINCT insiders bought the same name "
+                       "inside the rolling window (single buys are noise; clusters "
+                       "have literature).",
+        "params": {"min_insiders": {"type": "int", "min": 2, "max": 10, "step": 1}},
+    },
+    "verdict_change": {
+        "description": "Fires when a verdict's label flips vs the prior nightly "
+                       "artifact, or its score moves by at least the stated amount.",
+        "params": {"score_move": {"type": "float", "min": 0.05, "max": 0.5, "step": 0.05}},
+    },
+    "macro_flip": {
+        "description": "Fires when the recession nowcast crosses the stated line "
+                       "in either direction.",
+        "params": {"line": {"type": "float", "min": 0.2, "max": 0.8, "step": 0.05}},
+    },
+}
+
+
+def watchers_contract() -> dict:
+    """Kinds, bounds and defaults for the builder UI — the same table the
+    runner's ``load_config`` merges over, so a generated config always
+    round-trips (P10-3)."""
+    kinds = {}
+    for kind, spec in WATCHER_PARAM_SPECS.items():
+        params = {}
+        for name, p in spec["params"].items():
+            params[name] = {**p, "default": DEFAULT_CONFIG[kind][name]}
+        kinds[kind] = {"description": spec["description"],
+                       "enabled_default": DEFAULT_CONFIG[kind]["enabled"],
+                       "fixed": {k: v for k, v in DEFAULT_CONFIG[kind].items()
+                                 if k != "enabled" and k not in spec["params"]},
+                       "params": params}
+    return {"version": 1, "kinds": kinds,
+            "note": "the config is a COMMITTED file (data/watchers.json) — "
+                    "no server ever writes it"}
+
+
 def load_config(path: Path | str | None = None) -> dict:
     """data/watchers.json over the defaults; unknown kinds are ignored."""
     path = Path(path) if path else (PATHS.root / "data" / "watchers.json")

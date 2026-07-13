@@ -75,6 +75,12 @@ def main(argv=None) -> int:
     desk = build_desk_page(out.parent)
     print(f"Desk page written -> {desk.name} (+ desk-data.json)")
 
+    # the watcher builder (contract-bounded, writes nothing; P10)
+    from ..dashboard.builder_page import build_builder_page
+
+    builder = build_builder_page(out.parent)
+    print(f"Builder page written -> {builder.name}")
+
     # the motion layer + vendored libs (P9) — copied local, zero external fetches
     from ..dashboard.assets_pipe import copy_assets
 

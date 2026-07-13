@@ -765,7 +765,8 @@ def _watchers_feed_html() -> str:
         '<h2>What the templates are watching</h2></div></div>'
         '<p class="explain">Deterministic triggers over public data — earnings windows, squeeze '
         'fuel, insider clusters, verdict changes, the macro line. Every firing carries its '
-        'stated reason and an audit hash; missing sources say so.</p>'
+        'stated reason and an audit hash; missing sources say so. '
+        '<a href="builder.html">Configure the watchers &#8594;</a></p>'
         f'<ul class="wlist">{rows}{skipped}</ul>{quiet}</section>'
     )
 
