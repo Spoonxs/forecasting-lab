@@ -46,7 +46,12 @@ def main(argv=None) -> int:
     print(f"Scorecard written to {scorecard}")
 
     # the ticker recommendation pages (site/t/<SYM>.html) from the verdict artifact
-    built = build_verdict_pages(out.parent)
+    from ..dashboard.tier_live import copy_contract, worker_url
+
+    wu = worker_url()
+    built = build_verdict_pages(out.parent, tier_live_worker=wu)
+    if copy_contract(out.parent):
+        print(f"Tier-live: contract copied{' + worker ' + wu if wu else ' (no worker configured)'}")
     print(f"Ticker pages written: {len(built)} -> {out.parent / 't'}")
 
     # the full listed-symbol index for the home search (lazy-fetched, same-origin)

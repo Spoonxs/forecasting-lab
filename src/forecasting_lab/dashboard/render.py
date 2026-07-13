@@ -679,6 +679,15 @@ def _coverage_panel_html(manifest_path=None) -> str:
             f'<tbody>{rows}</tbody></table>')
 
 
+from .tier_live import tier_live_js  # noqa: E402 - placed near use
+
+
+def _tier_worker_url() -> str:
+    from .tier_live import worker_url
+
+    return worker_url()
+
+
 HEALTH_TONE = {"ok": UP, "degraded": "#B8860B", "stale": DOWN, "never": FAINT}
 
 
@@ -1122,6 +1131,8 @@ a {{ color:var(--accent); text-decoration:none; }}
 .search input {{ width:100%; font:500 15px/1.4 var(--mono); color:var(--ink); background:var(--card);
   border:1px solid var(--rule); border-radius:8px; padding:13px 16px; }}
 .search input:focus {{ outline:2px solid var(--accent); outline-offset:1px; }}
+.qres button.lp {{ font:700 10.5px/1 var(--mono); text-transform:uppercase; border:1px solid var(--rule);
+  background:var(--card); color:var(--accent); border-radius:4px; padding:5px 8px; margin-left:8px; cursor:pointer; }}
 .qres {{ position:absolute; left:0; right:0; top:calc(100% + 4px); z-index:30; background:var(--card);
   border:1px solid var(--rule); border-radius:8px; overflow:hidden; text-align:left; display:none; }}
 .qres.on {{ display:block; }}
@@ -1562,15 +1573,17 @@ a,button,.kpi {{ transition:color .15s ease, border-color .15s ease, background 
       .catch(function(){{ uni={{}}; }}); }}  // offline: uni stays empty, degrade honestly
   var q=document.getElementById('q'), qres=document.getElementById('qres');
   function safeSym(s){{ return /^[A-Z][A-Z0-9.\\-]{{0,9}}$/.test(s); }}
+  function LP(s){{ return (window.TIER_LIVE && TIER_LIVE.workerUrl)
+    ? '<button class="lp" data-s="'+esc(s)+'">live preview</button>' : ''; }}
   function render(s){{
     var rows=[], seen={{}};
     blist.forEach(function(x){{ if(x.indexOf(s)===0 && !seen[x]){{ seen[x]=1;
       rows.push('<a href="t/'+esc(x)+'.html"><b>'+esc(x)+'</b><span class="muted">full verdict &#8594;</span></a>'); }} }});
     if(uni){{ Object.keys(uni).forEach(function(x){{ if(rows.length<8 && x.indexOf(s)===0 && !seen[x]){{ seen[x]=1;
-      rows.push('<div><b>'+esc(x)+'</b><span class="muted">listed — add to watchlist for tomorrow&#8217;s full verdict</span></div>'); }} }}); }}
+      rows.push('<div><b>'+esc(x)+'</b><span class="muted">listed — add to watchlist for tomorrow&#8217;s full verdict</span>'+LP(x)+'</div>'); }} }}); }}
     if(!rows.length){{
       if(built[s]) rows.push('<a href="t/'+esc(s)+'.html"><b>'+esc(s)+'</b><span class="muted">full verdict &#8594;</span></a>');
-      else if(uni && uni[s]) rows.push('<div><b>'+esc(s)+'</b><span class="muted">listed — add to watchlist</span></div>');
+      else if(uni && uni[s]) rows.push('<div><b>'+esc(s)+'</b><span class="muted">listed — add to watchlist</span>'+LP(s)+'</div>');
       else if(uni && safeSym(s)) rows.push('<div><b>'+esc(s)+'</b><span class="muted">not a listed US stock/ETF</span></div>');
       else if(safeSym(s)) rows.push('<div><b>'+esc(s)+'</b><span class="muted">add to watchlist — listing check needs the online build</span></div>');
       else rows.push('<div><span class="muted">enter a ticker symbol</span></div>');
@@ -1604,6 +1617,23 @@ a,button,.kpi {{ transition:color .15s ease, border-color .15s ease, background 
   if(pH){{ var p=loadProf(); if(p.horizon)pH.value=p.horizon; if(p.goal)pG.value=p.goal; if(p.risk)pR.value=p.risk;
     [pH,pG,pR].forEach(function(s){{s.addEventListener('change',function(){{saveProf();applyProf();}});}}); applyProf(); }}
 }})();
+</script>
+<script>
+{tier_live_js(_tier_worker_url(), "contract.json")}
+// P10-5: live preview for listed-but-unbuilt symbols — the honest on-demand
+// path: one lit component, INSUFFICIENT by design, add-to-watchlist stated
+document.getElementById('qres').addEventListener('click', function(e) {{
+  var b = e.target.closest('button.lp'); if (!b) return;
+  e.stopPropagation();
+  var span = b.parentElement.querySelector('.muted');
+  b.disabled = true; b.textContent = '…';
+  TIER_LIVE.verdict(b.dataset.s).then(function(v) {{
+    var txt = v.note || '';
+    if (v.dials) txt = 'trend lean ' + v.dials.expected_return.toFixed(2) +
+      ' · max drawdown ' + Math.round(v.dials.drawdown_risk * 100) + '% — ' + txt;
+    span.textContent = txt; b.remove();
+  }}).catch(function() {{ span.textContent = 'live preview unavailable — add to watchlist'; b.remove(); }});
+}});
 </script>
 <script src="motion.js"></script>
 </body>

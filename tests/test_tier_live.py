@@ -32,7 +32,11 @@ def test_worker_ships_with_its_hardening():
     assert "ALLOWED_SYMBOLS.has(symbol)" in js            # the registry IS the allowlist
     assert '"no-store"' in js and "502" in js             # transient upstream never poisons the cache
     toml = (WORKER_DIR / "wrangler.toml").read_text(encoding="utf-8")
-    assert "ALLOWED_ORIGIN" in toml and "REPLACE-ME" in toml  # must be set before deploy
+    # P10-5: DEPLOYED — CORS locked to the real Pages origin, never a wildcard
+    assert 'ALLOWED_ORIGIN = "https://spoonxs.github.io"' in toml
+    config_lines = "\n".join(ln for ln in toml.splitlines()
+                             if not ln.lstrip().startswith("#"))
+    assert '"*"' not in config_lines and "REPLACE-ME" not in config_lines
     readme = (WORKER_DIR / "README.md").read_text(encoding="utf-8")
     assert "optional" in readme.lower() and "add to watchlist" in readme
 
@@ -62,3 +66,34 @@ def test_no_worker_default_states_the_degradation():
     assert DEGRADATION_MESSAGE in js
     assert "add to watchlist" in DEGRADATION_MESSAGE
     assert "nothing is computed on the spot" in DEGRADATION_MESSAGE
+
+
+# ------------------------------------------------ P10-5: the deployed worker wired
+def test_worker_url_reads_the_committed_config_and_degrades_honestly(tmp_path, monkeypatch):
+    from forecasting_lab.dashboard.tier_live import copy_contract, worker_url
+
+    url = worker_url()
+    assert url.startswith("https://") and "workers.dev" in url  # the deployed proxy
+    # the contract lands at the SITE ROOT (the old data/verdicts path never
+    # existed on Pages — the mirror's fetch would have 404'd)
+    dest = copy_contract(tmp_path)
+    assert dest is not None and dest.name == "contract.json"
+    import json as _json
+
+    assert "mutual_fund_twins" in _json.loads(dest.read_text(encoding="utf-8"))
+
+
+def test_home_carries_the_live_preview_path():
+    from forecasting_lab.dashboard.collect import collect_lab_state
+    from forecasting_lab.dashboard.render import render_dashboard
+
+    html = render_dashboard(collect_lab_state(seed=0))
+    assert "TIER_LIVE" in html and "'/bars/'" in html
+    assert "contract.json" in html
+    assert "live preview" in html and "TIER_LIVE.verdict(b.dataset.s)" in html
+    # the button only renders when a worker is configured (LP gates on workerUrl)
+    assert "TIER_LIVE.workerUrl" in html
+    # ticker pages fetch the contract RELATIVE to t/ (P10-5 path fix)
+    from forecasting_lab.dashboard.tier_live import tier_live_js
+
+    assert "'../contract.json'" in tier_live_js("https://x.workers.dev", "../contract.json")

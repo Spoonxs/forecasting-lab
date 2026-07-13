@@ -28,6 +28,7 @@ kalshi_private_key.*
 /data/*
 !/data/watchlist.json
 !/data/watchers.json
+!/data/tier_live.json
 !/data/verdicts/
 !/data/ai_opinions/
 !/data/arena/

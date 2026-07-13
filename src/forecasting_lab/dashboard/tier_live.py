@@ -21,16 +21,42 @@ DEGRADATION_MESSAGE = (
     "(no live worker configured; nothing is computed on the spot)"
 )
 
-CONTRACT_PATH = "data/verdicts/contract.json"
+CONTRACT_PATH = "contract.json"  # copied into the SITE root at build time —
+# the old data/verdicts/ path never existed on Pages (P10-5 fix)
 
 
-def tier_live_js(worker_url: str = "") -> str:
+def worker_url() -> str:
+    """The deployed quote-proxy URL from the committed config; '' = the
+    stated degradation (never a guess)."""
+    from ..config import PATHS
+
+    path = PATHS.root / "data" / "tier_live.json"
+    try:
+        return str(json.loads(path.read_text(encoding="utf-8")).get("worker_url", ""))
+    except (OSError, ValueError):
+        return ""
+
+
+def copy_contract(out_dir: Path | str) -> Path | None:
+    """site/contract.json — the mirror's same-origin contract fetch target.
+    None when no artifact exists yet (the mirror degrades honestly)."""
+    from ..config import PATHS
+
+    src = PATHS.root / "data" / "verdicts" / "contract.json"
+    if not src.exists():
+        return None
+    dest = Path(out_dir) / "contract.json"
+    dest.write_bytes(src.read_bytes())
+    return dest
+
+
+def tier_live_js(worker_url: str = "", contract_path: str = CONTRACT_PATH) -> str:
     """The embeddable client stub. ``worker_url`` empty = degradation mode."""
     return f"""
 // TIER LIVE mirror — reads the engine's contract; never re-hardcodes numbers
 var TIER_LIVE = {{
   workerUrl: {worker_url!r},
-  contractUrl: {CONTRACT_PATH!r},
+  contractUrl: {contract_path!r},
   degradation: {DEGRADATION_MESSAGE!r},
   verdict: async function(symbol) {{
     if (!this.workerUrl) return {{ label: null, note: this.degradation }};

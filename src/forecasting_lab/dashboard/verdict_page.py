@@ -698,6 +698,6 @@ footer{{margin-top:22px;padding-top:14px;border-top:1px solid var(--rule);font-s
     }});
   }});
 }})();
-{tier_live_js(tier_live_worker)}
+{tier_live_js(tier_live_worker, "../contract.json")}
 </script>
 </body></html>"""
