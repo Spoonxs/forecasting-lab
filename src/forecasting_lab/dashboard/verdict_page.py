@@ -292,6 +292,14 @@ def build_verdict_pages(out_dir, *, verdicts_dir=None, tier_live_worker: str = "
                   if str(t.get("ticker", "")).upper() == su]
         return holders, trades
 
+    def _load_fin(s: str):
+        try:
+            from ..sources.fundamentals import load_fundamentals
+
+            return load_fundamentals(s)
+        except Exception:  # noqa: BLE001 - honest empty module
+            return None
+
     registry = InstrumentRegistry()
     out_dir = Path(out_dir) / "t"
     out_dir.mkdir(parents=True, exist_ok=True)
@@ -318,6 +326,7 @@ def build_verdict_pages(out_dir, *, verdicts_dir=None, tier_live_worker: str = "
             markers=card.get("markers") if card else None,  # split/dividend events flow when the feed carries them
             news=news, peers=peers, as_of=payload["as_of"], audit_sha=sha,
             tier_live_worker=tier_live_worker,
+            financials=_load_fin(sym),
             holders=_ctx_for(sym)[0], trades=_ctx_for(sym)[1],
         )
         (out_dir / f"{safe}.html").write_text(html, encoding="utf-8")
@@ -345,6 +354,53 @@ def build_verdict_pages(out_dir, *, verdicts_dir=None, tier_live_worker: str = "
         )
         (out_dir / f"{fund_sym}.html").write_text(html, encoding="utf-8")
     return built
+
+
+_FIN_LABELS = {"revenue": "Revenue", "net_income": "Net income", "eps": "Diluted EPS"}
+
+
+def _fin_val(metric: str, v: float) -> str:
+    if metric == "eps":
+        return f"{v:,.2f}"
+    a = abs(v)
+    if a >= 1e9:
+        return f"{v / 1e9:,.1f}B"
+    if a >= 1e6:
+        return f"{v / 1e6:,.0f}M"
+    return f"{v:,.0f}"
+
+
+def _financials_module(fin: dict | None) -> str:
+    """The Financials tab (P10-2): reported us-gaap figures, EVERY column
+    dated by its fiscal end AND the date it was FILED — staleness on screen,
+    never a verdict input. Honest empty state when never fetched."""
+    if not fin:
+        return ('<h3>Financials</h3><p class="na">Not fetched yet — the rolling SEC '
+                'sweep covers the rated tier a slice per night (see the health panel). '
+                'Reported figures appear here dated by when they were filed.</p>')
+    metrics = [(m, fin[m]["annual"]) for m in ("revenue", "net_income", "eps")
+               if m in fin and fin[m].get("annual")]
+    if not metrics:
+        return ('<h3>Financials</h3><p class="na">No annual us-gaap series in this '
+                'registrant&#8217;s filings — honest n/a, nothing derived.</p>')
+    ends = sorted({r["end"] for _, rows in metrics for r in rows})[-5:]
+    head = "".join(f'<th class="num">{_esc(e[:4])}<span class="fin-sub">FY end {_esc(e)}</span></th>'
+                   for e in ends)
+    body = ""
+    for m, rows in metrics:
+        by_end = {r["end"]: r for r in rows}
+        cells = ""
+        for e in ends:
+            r = by_end.get(e)
+            cells += (f'<td class="num">{_fin_val(m, r["val"])}'
+                      f'<span class="fin-sub">filed {_esc(r["filed"])}</span></td>'
+                      if r else '<td class="num na">n/a</td>')
+        body += f'<tr><td>{_esc(_FIN_LABELS[m])}</td>{cells}</tr>'
+    return ('<h3>Financials</h3>'
+            '<p class="na">As reported to the SEC (us-gaap), dated by FILING date — '
+            'context, never a verdict input.</p>'
+            f'<div class="finwrap"><table class="fin"><thead><tr><th></th>{head}</tr>'
+            f'</thead><tbody>{body}</tbody></table></div>')
 
 
 def _context_module(symbol: str, holders: list[dict], trades: list[dict]) -> str:
@@ -426,6 +482,7 @@ def render_verdict_page(
     audit_sha: str = "",
     tier_live_worker: str = "",
     fund: dict | None = None,
+    financials: dict | None = None,
     holders: list | None = None,
     trades: list | None = None,
 ) -> str:
@@ -481,6 +538,12 @@ h3{{font:700 12px/1.3 var(--mono);letter-spacing:.06em;text-transform:uppercase;
   border-top:1px solid var(--rule);padding-top:12px}}
 .forprofile b{{color:var(--ink)}}
 .reasons{{color:var(--faint);font-size:12px;margin-top:8px;text-align:center}}
+.finwrap{{overflow-x:auto}}
+.fin{{width:100%;border-collapse:collapse;font:400 12.5px/1.5 var(--mono)}}
+.fin th{{text-align:right;font:700 10.5px/1.3 var(--mono);color:var(--mut);border-bottom:2px solid var(--ink);padding:0 8px 6px}}
+.fin th:first-child,.fin td:first-child{{text-align:left;font-weight:700}}
+.fin td{{padding:7px 8px;border-bottom:1px solid var(--rule);text-align:right;white-space:nowrap}}
+.fin-sub{{display:block;font:400 9.5px/1.3 var(--mono);color:var(--faint);text-transform:none}}
 .ctx{{list-style:none;padding:0;margin:6px 0}}
 .ctx li{{padding:7px 0;border-bottom:1px solid var(--rule);font-size:12.5px}}
 .ctx li:last-child{{border-bottom:0}}
@@ -549,7 +612,7 @@ footer{{margin-top:22px;padding-top:14px;border-top:1px solid var(--rule);font-s
 </style></head><body><div class="wrap">
 <div class="top"><a href="../index.html">&#9666; Platform</a>{MASCOTS.get("movers", "")}</div>
 {fund_note}
-<div class="rtabs"><a href="#chart">Chart</a><a href="#verdict">Verdict</a><a href="#evidence">Evidence</a><a href="#analyst">Analyst</a><a href="#context">Context</a><a href="#news">News</a><a href="#peers">Peers</a></div>
+<div class="rtabs"><a href="#chart">Chart</a><a href="#verdict">Verdict</a><a href="#evidence">Evidence</a><a href="#financials">Financials</a><a href="#analyst">Analyst</a><a href="#context">Context</a><a href="#news">News</a><a href="#peers">Peers</a></div>
 <div class="card" id="chart">{_price_header(symbol, name or symbol, price, day_change, moves)}{_chart(spark, markers)}</div>
 
 <div class="card" id="verdict">
@@ -571,6 +634,8 @@ footer{{margin-top:22px;padding-top:14px;border-top:1px solid var(--rule);font-s
   {_well_concerning(row.get("components", {}))}
   {_receipts(symbol, row, as_of, audit_sha)}
 </div>
+
+<div class="card" id="financials">{_financials_module(financials)}</div>
 
 <div class="card" id="analyst">{_analyst_module(analyst)}</div>
 

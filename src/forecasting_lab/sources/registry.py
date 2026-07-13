@@ -58,6 +58,8 @@ def source_groups(refresh: bool = False) -> list[SourceGroup]:
                     "FINRA daily short-sale volume files; daily pressure gauge for squeeze"),
         SourceGroup("Insider cluster buys", "filings", "live", 1,
                     "Form-4 distinct-insider buy clusters (openinsider screener); FTD zips deliberately later"),
+        SourceGroup("Fundamentals (XBRL)", "filings", "live", 3,
+                    "SEC companyfacts: revenue / net income / EPS, dated by FILING date; rolling sweep; context, never signal"),
         SourceGroup("13F holders", "filings", "live", _thirteenf_count(),
                     "curated manager books via EDGAR 13F-HR; STALE BY DESIGN — context, never signal"),
         SourceGroup("Congress trades", "filings", "live", 2,

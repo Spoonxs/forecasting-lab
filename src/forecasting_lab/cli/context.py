@@ -17,6 +17,7 @@ def main(argv=None) -> int:
                                  formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--skip-13f", action="store_true")
     ap.add_argument("--skip-congress", action="store_true")
+    ap.add_argument("--skip-fundamentals", action="store_true")
     args = ap.parse_args(argv)
 
     from ..pipeline.digest import write_dated_data
@@ -31,6 +32,19 @@ def main(argv=None) -> int:
               f"-> {path.name}")
         for s in d13["skips"]:
             print(f"  skip {s['manager']}: {s['reason']}")
+
+    if not args.skip_fundamentals:
+        from datetime import date
+
+        from ..pipeline.verdicts import tier_full_symbols
+        from ..sources.fundamentals import fetch_fundamentals
+
+        rec = fetch_fundamentals(tier_full_symbols(), as_of=date.today())
+        write_dated_data("fundamentals", rec)
+        print(f"fundamentals: {rec['fetched']} refreshed (rolling), "
+              f"{rec['fresh']} fresh, {len(rec['skips'])} skip(s)")
+        for s in rec["skips"][:4]:
+            print(f"  skip {s['symbol']}: {s['reason']}")
 
     if not args.skip_congress:
         from ..sources.congress import fetch_congress_digest
